@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Jukebox</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎛️</text></svg>">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="logo">
+    <span class="logo-disc">🎵</span>
+    <div>
+      <h1>AI JUKEBOX</h1>
+      <p class="tagline">original songs · cover art · a DJ that never sleeps</p>
+    </div>
+  </div>
+  <div id="service-status" class="service-status" title="Class service health">checking services…</div>
+</header>
+
+<main class="layout">
+
+  <!-- ============ LEFT: creators ============ -->
+  <section class="column creators">
+    <div class="card">
+      <h2>🎙️ Make a song</h2>
+      <form id="song-form" autocomplete="off">
+        <div class="field-row">
+          <div class="field">
+            <label for="genre">Genre</label>
+            <select id="genre">
+              <option>pop</option><option>rock</option><option>indie</option>
+              <option>electronic</option><option>hip-hop</option><option>r&amp;b</option>
+              <option>jazz</option><option>country</option><option>folk</option>
+              <option>ambient</option><option>latin</option><option>funk</option>
+              <option>metal</option><option>reggae</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="mood">Mood</label>
+            <select id="mood">
+              <option>upbeat</option><option>dreamy</option><option>melancholic</option>
+              <option>energetic</option><option>chill</option><option>romantic</option>
+              <option>mysterious</option><option>nostalgic</option><option>joyful</option>
+              <option>dark</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="theme">Theme / subject</label>
+          <input id="theme" type="text" value="driving through the city at night" placeholder="what the song is about">
+        </div>
+
+        <div class="field-row">
+          <div class="field grow">
+            <label for="duration">Length <span id="duration-val">25s</span></label>
+            <input id="duration" type="range" min="8" max="60" step="1" value="25">
+          </div>
+          <div class="field">
+            <label for="bpm">BPM (blank = auto)</label>
+            <input id="bpm" type="number" min="60" max="200" placeholder="auto" style="width:72px">
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="key">Key</label>
+            <select id="key">
+              <option>C major</option><option>A minor</option><option>G major</option>
+              <option>E minor</option><option>D major</option><option>B minor</option>
+              <option>F major</option><option>D minor</option><option>E major</option>
+              <option>C minor</option>
+            </select>
+          </div>
+          <div class="field grow">
+            <label for="cover-style">Cover art style</label>
+            <select id="cover-style">
+              <option>synthwave neon</option><option>minimalist poster</option>
+              <option>watercolor</option><option>graffiti street art</option>
+              <option>abstract expressionist</option><option>vintage film poster</option>
+              <option>cosmic space</option><option>pixel art</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="checks">
+          <label class="check"><input id="vocals" type="checkbox" checked> include vocals</label>
+        </div>
+
+        <div class="field-row">
+          <div class="field grow">
+            <label for="artist">Artist name (blank = AI chooses)</label>
+            <input id="artist" type="text" placeholder="e.g. Neon Daze">
+          </div>
+          <div class="field grow">
+            <label for="title">Title (blank = AI chooses)</label>
+            <input id="title" type="text" placeholder="e.g. Midnight Colors">
+          </div>
+        </div>
+
+        <button type="submit" class="btn primary" id="make-song-btn">✨ Generate song</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>📻 Make a show <span class="hint">(DJ commentary between tracks)</span></h2>
+      <form id="show-form">
+        <div class="field-row">
+          <div class="field">
+            <label for="n-tracks">Tracks</label>
+            <select id="n-tracks"><option>2</option><option selected>3</option><option>4</option><option>5</option></select>
+          </div>
+          <div class="field grow">
+            <label for="dj-vibe">DJ personality</label>
+            <select id="dj-vibe">
+              <option>chill and smooth</option><option>high-energy hype</option>
+              <option>deadpan dry humor</option><option>poetic and artsy</option>
+              <option>late-night lo-fi</option><option>slick radio personality</option>
+            </select>
+          </div>
+        </div>
+        <p class="muted small">Uses the song settings above. Generates every song plus AI-written,
+        AI-voiced segues, then starts the set automatically.</p>
+        <button type="submit" class="btn secondary" id="make-show-btn">📻 Generate the whole show</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ CENTER: player ============ -->
+  <section class="column player-col">
+    <div class="card now-playing">
+      <div id="dj-banner" class="dj-banner hidden">
+        <span class="dj-ico">🎙️</span>
+        <div><strong>DJ</strong><p id="dj-script">…</p></div>
+      </div>
+
+      <div class="np-row">
+        <div class="cover-box" id="cover-box">
+          <img id="np-cover" alt="cover art" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect fill='%23191f2e' width='200' height='200'/%3E%3Ccircle cx='100' cy='100' r='55' fill='none' stroke='%234a51ff' stroke-width='10'/%3E%3Ccircle cx='100' cy='100' r='14' fill='%23ff2e88'/%3E%3C/svg%3E">
+          <div class="spinner" id="np-spinner"></div>
+        </div>
+        <div class="np-meta">
+          <p class="np-status" id="np-status">Nothing playing</p>
+          <h2 id="np-title">—</h2>
+          <p id="np-artist">—</p>
+          <div class="chips" id="np-chips"></div>
+          <audio id="player" controls preload="auto"></audio>
+        </div>
+      </div>
+
+      <div class="np-controls">
+        <button id="btn-prev" class="ctl" title="Previous">⏮</button>
+        <button id="btn-play" class="ctl big" title="Play / pause">▶</button>
+        <button id="btn-next" class="ctl" title="Next">⏭</button>
+        <button id="btn-lyrics" class="ctl" title="Show / hide lyrics">📜</button>
+        <span id="progress-label" class="progress-label">0:00 / 0:00</span>
+      </div>
+      <div class="lyrics-panel hidden" id="lyrics-panel">
+        <h3>Lyrics</h3>
+        <pre id="lyrics-text"></pre>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Queue <span class="count" id="queue-count">0</span>
+        <button class="link-btn" id="btn-clear-queue">clear</button></h2>
+      <ul id="queue" class="queue"></ul>
+    </div>
+  </section>
+
+  <!-- ============ RIGHT: library ============ -->
+  <section class="column library-col">
+    <div class="card">
+      <h2>Library <span class="count" id="lib-count">0</span></h2>
+      <div id="library" class="library">
+        <p class="muted">No songs yet. Generate your first one →</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Saved shows <span class="count" id="shows-count">0</span></h2>
+      <ul id="shows" class="show-list"></ul>
+    </div>
+  </section>
+</main>
+
+<div id="busy-overlay" class="busy hidden">
+  <div class="busy-box">
+    <div class="spinner"></div>
+    <h3 id="busy-title">Generating…</h3>
+    <p id="busy-stage">tuning the machines</p>
+    <div class="progress"><div class="bar" id="busy-bar"></div></div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>

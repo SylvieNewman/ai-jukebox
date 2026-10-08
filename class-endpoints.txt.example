@@ -1,0 +1,13 @@
+# Class service endpoints — TEMPLATE.
+#
+# Copy the real values from the official class-endpoints.txt into your local
+# `.env` (JUKEBOX_*_URL + JUKEBOX_API_KEY). Never commit the real endpoints
+# file, the real .env, or any credentials to the repository.
+
+TEXT   : http://HOST:9001    # Qwen3.6-35B-A3B            (text generation / lyrics / DJ scripts)
+IMAGE  : http://HOST:9006    # FLUX.2 klein 4B            (cover art)
+MUSIC  : http://HOST:9007    # ACE-Step 1.5 XL Turbo      (music)
+VOICE  : http://HOST:9008    # Chatterbox Multilingual V3 (DJ speech)
+
+# Auth: add  Authorization: Bearer <JUKEBOX_API_KEY>  to every request.
+# Port 9000 is reserved for other class work — never used by this app.

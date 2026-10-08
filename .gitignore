@@ -1,0 +1,18 @@
+# secrets & credentials — never committed
+.env
+
+# generated media & library index — never committed
+storage/
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# smoke-test output
+smoke-out/
+
+# os
+.DS_Store
