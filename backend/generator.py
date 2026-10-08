@@ -148,22 +148,63 @@ def generate_song(
 # ---------------------------------------------------------------------------
 # Shows
 # ---------------------------------------------------------------------------
-def _dj_scripts(show_name: str, songs: list[dict], dj_vibe: str) -> dict:
+_FORBIDDEN_SCRIPT_TOKENS = ("...", "placeholder", "lorem", "the previous track ",
+                           "the following track", "insert", "replace me")
+
+_RETRY_NUDGE = """
+
+Your previous attempt was rejected: lines were placeholders, ellipses, or simply
+too short. Write the complete lines NOW — full sentences, at least 100 characters
+and 3-5 sentences per line, closing out the real previous song and introducing
+the real next song by title and artist."""
+
+
+def _valid_script(text: str) -> bool:
+    """A DJ line must be real, substantial broadcast copy — not a placeholder."""
+    t = (text or "").strip()
+    if len(t) < 100 or len(t.split()) < 14:
+        return False
+    low = t.lower()
+    return not any(tok in low for tok in _FORBIDDEN_SCRIPT_TOKENS)
+
+
+def _dj_scripts(songs: list[dict], dj_vibe: str) -> dict:
+    """Opener + one segue per track after the first, validated and retried so a
+    placeholder/one-word line can never reach the player (see fix/dj-transitions)."""
+    n_segues = max(0, len(songs) - 1)
     playlist = "\n".join(
-        f"{i + 1}. \"{s['title']}\" by {s['artist']} ({s['genre']}, {s['mood']}, {s['theme']})"
+        f'{i + 1}. "{s["title"]}" by {s["artist"]} ({s["genre"]}, {s["mood"]}, {s["theme"]})'
         for i, s in enumerate(songs)
     )
-    user = prompts.SHOW_USER.format(
-        playlist=playlist,
-        n_segues=len(songs) - 1,
-        show_name=show_name,
-    )
-    return _json_completion(
-        [{"role": "system", "content": prompts.SHOW_SYSTEM.format(dj_vibe=dj_vibe)},
-         {"role": "user", "content": user}],
-        max_tokens=2400,
-        temperature=0.8,
-    )
+    base_user = prompts.SHOW_USER.format(playlist=playlist, n_segues=n_segues)
+    nudge = ""
+    last_error = "no attempt made"
+
+    for attempt in range(5):
+        try:
+            scripts = services.extract_json(services.text_completion(
+                [{"role": "system", "content": prompts.SHOW_SYSTEM.format(dj_vibe=dj_vibe)},
+                 {"role": "user", "content": base_user + nudge}],
+                max_tokens=2400,
+                temperature=0.85,
+            ))
+        except Exception as exc:  # noqa: BLE001 - unparseable output, retry
+            last_error = f"attempt {attempt + 1}: {exc}"
+            nudge = _RETRY_NUDGE
+            continue
+
+        opener = str(scripts.get("opener") or "").strip()
+        raw_segues = scripts.get("segues")
+        segues = [str(x).strip() for x in raw_segues] if isinstance(raw_segues, list) else []
+        lengths = [len(x) for x in [opener, *segues[:n_segues]]]
+        if _valid_script(opener) and len(segues) >= n_segues and all(
+            _valid_script(s) for s in segues[:n_segues]
+        ):
+            return {"opener": opener, "segues": segues[:n_segues]}
+        last_error = f"attempt {attempt + 1}: script quality too low (chars={lengths})"
+        nudge = _RETRY_NUDGE
+
+    raise services.ServiceError(f"DJ script generation failed after 5 attempts: {last_error}")
 
 
 def generate_show(
@@ -191,7 +232,7 @@ def generate_show(
             range(n_tracks),
         ))
 
-    scripts = _dj_scripts("set", songs, dj_vibe)
+    scripts = _dj_scripts(songs, dj_vibe)
     opener = scripts.get("opener", "").strip()
     segues = scripts.get("segues", []) if isinstance(scripts.get("segues"), list) else []
     segues = [str(s).strip() for s in segues[: n_tracks - 1]]
