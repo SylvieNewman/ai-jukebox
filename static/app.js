@@ -239,7 +239,7 @@ async function refreshLibrary() {
       </div>
       <div class="sc-meta">
         <div class="sc-title">${escapeHtml(song.title || "Untitled")}</div>
-        <div class="sc-sub">${escapeHtml(song.artist || "")} · ${song.duration}s</div>
+        <div class="sc-sub">${escapeHtml(song.artist || "")} · ${fmtTime(song.duration)}</div>
       </div>`;
     const img = card.querySelector("img");
     img.onclick = () => enqueue({ kind: "song", ...song }, { autoplay: true });
@@ -343,7 +343,7 @@ async function generateShow() {
 $("song-form").addEventListener("submit", (e) => { e.preventDefault(); generateSong(); });
 $("show-form").addEventListener("submit", (e) => { e.preventDefault(); generateShow(); });
 $("duration").addEventListener("input", () => {
-  $("duration-val").textContent = $("duration").value + "s";
+  $("duration-val").textContent = fmtTime(Number($("duration").value));
 });
 
 /* ------------------------------------------------------- health --------- */

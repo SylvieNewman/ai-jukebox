@@ -24,7 +24,7 @@ class SongRequest(BaseModel):
     genre: str = Field("pop", description="e.g. pop, rock, hip-hop, electronic, jazz")
     mood: str = Field("upbeat", description="emotional vibe of the track")
     theme: str = Field("driving at night", description="what the song is about")
-    duration: float = Field(25.0, ge=8, le=90, description="song length in seconds")
+    duration: float = Field(25.0, ge=8, le=120, description="song length in seconds (8s to 2 minutes)")
     vocals: bool = True
     bpm: Optional[int] = Field(None, ge=60, le=200)
     key_scale: str = "C major"
@@ -39,7 +39,7 @@ class ShowRequest(BaseModel):
     genre: str = "pop"
     mood: str = "upbeat"
     theme: str = "driving at night"
-    duration: float = Field(25.0, ge=8, le=90)
+    duration: float = Field(25.0, ge=8, le=120, description="song length in seconds (8s to 2 minutes)")
     vocals: bool = True
     bpm: Optional[int] = None
     key_scale: str = "C major"
