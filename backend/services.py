@@ -59,20 +59,26 @@ def text_completion(
     max_tokens: int = 1500,
     temperature: float = 0.6,
 ) -> str:
-    """Chat completion; returns the assistant text."""
+    """Chat completion; returns the assistant text.
+
+    Thinking is disabled (``chat_template_kwargs.enable_thinking``) because the
+    reasoning model otherwise spends the token budget on a "thinking process"
+    that delays or truncates the actual answer; if the serving backend rejects
+    that kwarg we transparently retry without it.
+    """
     last_error: Optional[Exception] = None
-    for attempt in range(2):  # one retry for empty/thinking-only responses
+    no_think = True
+    for attempt in range(3):
+        payload: dict[str, Any] = {
+            "model": config.TEXT_MODEL,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        }
+        if no_think:
+            payload["chat_template_kwargs"] = {"enable_thinking": False}
         try:
-            status, resp = _call(
-                config.TEXT_URL,
-                "/v1/chat/completions",
-                {
-                    "model": config.TEXT_MODEL,
-                    "messages": messages,
-                    "max_tokens": max_tokens,
-                    "temperature": temperature,
-                },
-            )
+            status, resp = _call(config.TEXT_URL, "/v1/chat/completions", payload)
             if status != 200 or not resp:
                 raise ServiceError(f"text service status {status}")
             msg = resp["choices"][0]["message"]
@@ -82,6 +88,10 @@ def text_completion(
             if content:
                 return content
             last_error = ServiceError("text service returned empty content")
+        except ServiceError as exc:
+            last_error = exc
+            if no_think and "chat_template_kwargs" in str(exc):
+                no_think = False  # backend does not support the kwarg; retry plainly
         except Exception as exc:  # noqa: BLE001 - retry politely
             last_error = exc
         time.sleep(1.5)
@@ -89,25 +99,41 @@ def text_completion(
 
 
 def extract_json(text: str) -> dict:
-    """Tolerantly parse the first complete JSON object in a model response."""
+    """Parse the best JSON object in a model response.
+
+    Tolerates thinking prose and truncated output: scans every complete JSON
+    object and prefers the LAST one that carries real string content (a value
+    of 10+ chars), so a quoted template/example inside the thinking phase can
+    never be returned over the actual answer. Falls back to the last object.
+    """
     import json as _json
 
     cleaned = text.strip()
     cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
     cleaned = re.sub(r"\s*```$", "", cleaned)
     decoder = _json.JSONDecoder()
-    idx = cleaned.find("{")
-    attempt = 0
-    while idx != -1 and attempt < 20:
+    objects: list[tuple[dict, int]] = []  # (obj, position)
+    idx = 0
+    while idx < len(cleaned):
         try:
-            obj, _end = decoder.raw_decode(cleaned[idx:])
+            obj, end = decoder.raw_decode(cleaned[idx:])
             if isinstance(obj, dict):
-                return obj
+                objects.append((obj, idx))
+            idx += max(end, 1)
         except _json.JSONDecodeError:
-            pass
-        idx = cleaned.find("{", idx + 1)
-        attempt += 1
-    raise ServiceError(f"no JSON object in model output: {text[:200]}")
+            idx += 1
+    if not objects:
+        raise ServiceError(f"no JSON object in model output: {text[:200]}")
+
+    def _has_real_content(obj: dict) -> bool:
+        return any(
+            isinstance(v, str) and len(v) >= 10
+            for v in obj.values()
+        )
+
+    substantive = [o for o, _ in objects if _has_real_content(o)]
+    pool = substantive or [o for o, _ in objects]
+    return pool[-1]  # type: ignore[return-value]
 
 
 # ---------------------------------------------------------------------------
