@@ -563,7 +563,8 @@ function renderPlaylistModal(p) {
         try {
           await api(`/api/playlists/${p.id}/items/${item.uid}`, { method: "DELETE" });
           toast("Removed from playlist");
-          openPlaylist(p.id);
+          await openPlaylist(p.id);
+          refreshPlaylists();   // keep the playlist list counts in sync
         } catch (err) { toast(err.message, true); }
       };
     }
@@ -710,8 +711,9 @@ async function renderLibraryPicker() {
       try {
         await api(`/api/playlists/${pl.detail.id}/items`, { method: "POST", body: { kind: r.kind, id: r.id } });
         toast(`Added “${r.title}”`);
-        openPlaylist(pl.detail.id);   // refresh the detail view
-        renderLibraryPicker();        // keep the picker in sync
+        await openPlaylist(pl.detail.id);   // refresh the detail view
+        await renderLibraryPicker();        // keep the picker in sync
+        refreshPlaylists();                 // refresh the playlist list counts
       } catch (err) { toast(err.message, true); }
     });
     list.appendChild(li);
