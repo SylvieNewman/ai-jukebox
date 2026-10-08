@@ -346,6 +346,26 @@ $("duration").addEventListener("input", () => {
   $("duration-val").textContent = $("duration").value + "s";
 });
 
+/* ------------------------------------------------------- dice ------------ */
+$("random-theme-btn").addEventListener("click", async () => {
+  const btn = $("random-theme-btn");
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.textContent = "🎲 …";
+  try {
+    const data = await api("/api/themes/random");
+    const theme = (data.theme || "").trim();
+    if (!theme) throw new Error("empty theme");
+    $("theme").value = theme;
+    toast(`Rolled: “${theme}”`);
+  } catch (err) {
+    toast(err.message || "Couldn't roll a theme", true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+});
+
 /* ------------------------------------------------------- health --------- */
 async function checkHealth() {
   try {

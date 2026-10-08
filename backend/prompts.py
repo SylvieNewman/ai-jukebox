@@ -49,3 +49,17 @@ Respond with JSON exactly in this shape:
   "segues": ["line before track 2", "line before track 3", ...]
 }}
 segues must have exactly {n_segues} entries (one per track after the first)."""
+
+THEME_SYSTEM = (
+    "You are a songwriter's creative spark for an AI jukebox. You invent vivid, "
+    "original song themes. Respond with a single valid JSON object and nothing else: "
+    "no markdown fences, no commentary."
+)
+
+THEME_USER = (
+    "Invent one fresh, evocative song theme — a scene, a feeling, or a tiny story a "
+    "song could be about. Something no one has heard before.\n"
+    'Example of the required shape: {"theme": "a lighthouse keeper\'s 4 a.m. broadcast"}\n'
+    "Now invent a DIFFERENT theme, responding with JSON exactly in this shape: "
+    '{"theme": "your theme here"}'
+)
