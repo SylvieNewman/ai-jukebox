@@ -107,6 +107,35 @@ def show_voice_file(show_id: str, name: str) -> Optional[Path]:
     return path
 
 
+# ------------------------------------------------------------- playlists --
+def list_playlists() -> list[dict]:
+    """Every playlist, newest first. Privacy filtering happens in the API layer."""
+    return sorted(_read_index(config.PLAYLISTS_FILE).get("playlists", {}).values(),
+                  key=lambda p: p.get("created", ""), reverse=True)
+
+
+def get_playlist(playlist_id: str) -> Optional[dict]:
+    return _read_index(config.PLAYLISTS_FILE).get("playlists", {}).get(playlist_id)
+
+
+def save_playlist(playlist: dict) -> dict:
+    index = _read_index(config.PLAYLISTS_FILE)
+    index.setdefault("playlists", {})
+    index["playlists"][playlist["id"]] = playlist
+    _write_index(config.PLAYLISTS_FILE, index)
+    return playlist
+
+
+def delete_playlist(playlist_id: str) -> bool:
+    index = _read_index(config.PLAYLISTS_FILE)
+    playlists = index.get("playlists", {})
+    if playlist_id not in playlists:
+        return False
+    del playlists[playlist_id]
+    _write_index(config.PLAYLISTS_FILE, index)
+    return True
+
+
 def health_check() -> dict:
     """Lightweight reachability check for every class service (used by /api/health)."""
     from . import services

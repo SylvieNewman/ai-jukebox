@@ -203,8 +203,64 @@
       <h2>Saved shows <span class="count" id="shows-count">0</span></h2>
       <ul id="shows" class="show-list"></ul>
     </div>
+
+    <div class="card">
+      <h2>📀 My playlists <span class="count" id="my-pl-count">0</span></h2>
+      <div class="user-row">
+        <input id="nickname" type="text" maxlength="40" placeholder="your name" title="Your playlist nickname">
+        <button type="button" class="btn-mini" id="save-nickname">Set name</button>
+      </div>
+      <div class="new-pl-row">
+        <input id="new-pl-name" type="text" maxlength="40" placeholder="new playlist name">
+        <label class="check" title="Everyone can browse this playlist"><input id="new-pl-public" type="checkbox" checked> public</label>
+        <button type="button" class="btn-mini" id="create-playlist" title="Create playlist">＋ New</button>
+      </div>
+      <ul id="my-playlists" class="playlist-list"></ul>
+    </div>
+
+    <div class="card">
+      <h2>🌍 Community playlists</h2>
+      <ul id="community-playlists" class="playlist-list"></ul>
+    </div>
   </section>
 </main>
+
+<!-- ============ playlist detail modal ============ -->
+<div id="playlist-modal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-head">
+      <div>
+        <h2 id="pl-name">—</h2>
+        <p class="muted small" id="pl-meta">—</p>
+      </div>
+      <div class="modal-head-actions">
+        <label class="check" id="pl-public-wrap" title="Everyone can browse this playlist">
+          <input id="pl-public" type="checkbox"> public
+        </label>
+        <button type="button" class="sc-btn" id="pl-rename" title="Rename">✏️</button>
+        <button type="button" class="sc-btn" id="pl-delete" title="Delete playlist">🗑</button>
+        <button type="button" class="sc-btn" id="close-playlist" title="Close">✕</button>
+      </div>
+    </div>
+    <ul id="pl-items" class="pl-items"></ul>
+    <p class="muted small" id="pl-empty">This playlist is empty — add songs or shows with the 📃 button.</p>
+  </div>
+</div>
+
+<!-- ============ add-to-playlist modal ============ -->
+<div id="add-modal" class="modal-overlay hidden">
+  <div class="modal-box add-box">
+    <h2>Add to playlist</h2>
+    <ul id="add-pl-list" class="playlist-list"></ul>
+    <div class="new-pl-row">
+      <input id="add-new-name" type="text" maxlength="40" placeholder="…or a new playlist name">
+      <button type="button" class="btn-mini" id="add-new-btn">Create &amp; add</button>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn-mini" id="close-add">Cancel</button>
+    </div>
+  </div>
+</div>
 
 <div id="busy-overlay" class="busy hidden">
   <div class="busy-box">

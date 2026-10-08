@@ -43,6 +43,7 @@ VOICE = os.environ.get("JUKEBOX_VOICE", "default")
 STORAGE_DIR = Path(os.environ.get("JUKEBOX_STORAGE", PROJECT_ROOT / "storage"))
 LIBRARY_FILE = STORAGE_DIR / "library.json"
 SHOWS_FILE = STORAGE_DIR / "shows.json"
+PLAYLISTS_FILE = STORAGE_DIR / "playlists.json"
 
 # --- Tuning ------------------------------------------------------------------
 REQUEST_TIMEOUT = int(os.environ.get("JUKEBOX_REQUEST_TIMEOUT", "420"))

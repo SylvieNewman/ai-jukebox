@@ -10,10 +10,14 @@ const state = {
 };
 
 const $ = (id) => document.getElementById(id);
+const COVER_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect fill='%23191f2e' width='200' height='200'/%3E%3C/svg%3E";
 const api = async (path, opts = {}) => {
+  const headers = opts.body ? { "Content-Type": "application/json" } : {};
+  const name = localStorage.getItem("jukebox_user") || "";
+  if (name) headers["X-Username"] = name;  // lightweight identity for playlists
   const res = await fetch(path, {
     method: opts.method || "GET",
-    headers: opts.body ? { "Content-Type": "application/json" } : undefined,
+    headers,
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
   let data = null;
@@ -237,6 +241,7 @@ async function refreshLibrary() {
       <div class="sc-actions">
         <button class="sc-btn" data-act="play" title="Play now">▶</button>
         <button class="sc-btn" data-act="queue" title="Add to queue">＋</button>
+        <button class="sc-btn" data-act="pl" title="Add to playlist">📃</button>
         <button class="sc-btn" data-act="del" title="Delete">🗑</button>
       </div>
       <div class="sc-meta">
@@ -253,6 +258,10 @@ async function refreshLibrary() {
       e.stopPropagation();
       enqueue({ kind: "song", ...song });
       toast(`Added "${song.title}" to the queue`);
+    };
+    card.querySelector('[data-act="pl"]').onclick = (e) => {
+      e.stopPropagation();
+      openAddModal("song", song.id);
     };
     card.querySelector('[data-act="del"]').onclick = async (e) => {
       e.stopPropagation();
@@ -283,12 +292,17 @@ async function refreshShows() {
       <span class="show-meta">${show.segments ? show.segments.filter(s => s.kind === "song").length : 0} tracks</span>
       <span class="show-btns">
         <button class="sc-btn" data-act="play" title="Play show">▶</button>
+        <button class="sc-btn" data-act="pl" title="Add to playlist">📃</button>
         <button class="sc-btn" data-act="del" title="Delete">🗑</button>
       </span>`;
     li.querySelector('[data-act="play"]').onclick = async (e) => {
       e.stopPropagation();
       const full = await api(`/api/shows/${show.id}`);
       loadShowQueue(full);
+    };
+    li.querySelector('[data-act="pl"]').onclick = (e) => {
+      e.stopPropagation();
+      openAddModal("show", show.id);
     };
     li.querySelector('[data-act="del"]').onclick = async (e) => {
       e.stopPropagation();
@@ -389,6 +403,264 @@ $("random-names-btn").addEventListener("click", async () => {
   }
 });
 
+/* ------------------------------------------------------ playlists ------- */
+const pl = { mine: [], detail: null, addKind: null, addId: null };
+
+function myName() {
+  return localStorage.getItem("jukebox_user") || "";
+}
+
+function renderNickname() {
+  $("nickname").value = myName();
+}
+
+$("save-nickname").onclick = () => {
+  const name = $("nickname").value.trim();
+  if (!name) { toast("Enter a name first", true); return; }
+  localStorage.setItem("jukebox_user", name);
+  renderNickname();
+  toast(`You are now “${name}” — your playlists will be attributed to this name.`);
+  refreshPlaylists();
+};
+
+$("create-playlist").onclick = async () => {
+  if (!myName()) { toast("Set a name first (above)", true); return; }
+  const name = $("new-pl-name").value.trim();
+  if (!name) { toast("Give the playlist a name", true); return; }
+  try {
+    await api("/api/playlists", { method: "POST", body: { name, public: $("new-pl-public").checked } });
+    $("new-pl-name").value = "";
+    toast(`“${name}” created`);
+    await refreshPlaylists();
+  } catch (err) { toast(err.message, true); }
+};
+
+async function refreshPlaylists() {
+  const name = myName();
+  const [mineData, communityData] = await Promise.all([
+    api("/api/playlists" + (name ? `?owner=${encodeURIComponent(name)}` : "")),
+    api("/api/playlists"),
+  ]);
+  pl.mine = mineData.playlists || [];
+  pl.community = (communityData.playlists || []).filter((p) => p.owner !== name);
+  renderMyPlaylists();
+  renderCommunity();
+}
+
+function renderMyPlaylists() {
+  $("my-pl-count").textContent = pl.mine.length;
+  const ul = $("my-playlists");
+  ul.innerHTML = "";
+  if (!pl.mine.length) {
+    ul.innerHTML = '<p class="muted small">No playlists yet — create one above, or add a song with 📃.</p>';
+    return;
+  }
+  pl.mine.forEach((p) => {
+    const li = document.createElement("li");
+    li.className = "pl-row";
+    li.innerHTML = `
+      <img class="pl-thumb" src="${p.cover_url || COVER_PLACEHOLDER}" alt="">
+      <div class="pl-info">
+        <div class="pl-name">${escapeHtml(p.name)}</div>
+        <div class="pl-sub">${p.item_count} item(s)</div>
+      </div>
+      <span class="badge ${p.public ? "public" : "private"}">${p.public ? "public" : "private"}</span>
+      <span class="pl-btns">
+        <button class="sc-btn" data-act="open" title="Open">📂</button>
+        <button class="sc-btn" data-act="del" title="Delete">🗑</button>
+      </span>`;
+    li.querySelector('[data-act="open"]').onclick = (e) => { e.stopPropagation(); openPlaylist(p.id); };
+    li.querySelector('[data-act="del"]').onclick = async (e) => {
+      e.stopPropagation();
+      if (!confirm(`Delete playlist “${p.name}”?`)) return;
+      try {
+        await api(`/api/playlists/${p.id}`, { method: "DELETE" });
+        toast("Playlist deleted");
+        await refreshPlaylists();
+      } catch (err) { toast(err.message, true); }
+    };
+    li.onclick = () => openPlaylist(p.id);
+    ul.appendChild(li);
+  });
+}
+
+function renderCommunity() {
+  const ul = $("community-playlists");
+  ul.innerHTML = "";
+  if (!pl.community.length) {
+    ul.innerHTML = '<p class="muted small">No public playlists yet — be the first!</p>';
+    return;
+  }
+  pl.community.forEach((p) => {
+    const li = document.createElement("li");
+    li.className = "pl-row";
+    li.innerHTML = `
+      <img class="pl-thumb" src="${p.cover_url || COVER_PLACEHOLDER}" alt="">
+      <div class="pl-info">
+        <div class="pl-name">${escapeHtml(p.name)}</div>
+        <div class="pl-sub">by ${escapeHtml(p.owner)} · ${p.item_count} item(s)</div>
+      </div>
+      <span class="badge public">public</span>`;
+    li.onclick = () => openPlaylist(p.id);
+    ul.appendChild(li);
+  });
+}
+
+async function openPlaylist(id) {
+  try {
+    pl.detail = await api(`/api/playlists/${id}`);
+    renderPlaylistModal(pl.detail);
+    $("playlist-modal").classList.remove("hidden");
+  } catch (err) { toast(err.message, true); }
+}
+
+function renderPlaylistModal(p) {
+  $("pl-name").textContent = p.name;
+  $("pl-meta").textContent = `by ${p.owner} · ${p.items.length} item(s) · ${p.public ? "public" : "private"}`;
+  $("pl-public").checked = p.public;
+  $("pl-public-wrap").style.display = p.is_owner ? "" : "none";
+  $("pl-rename").style.display = p.is_owner ? "" : "none";
+  $("pl-delete").style.display = p.is_owner ? "" : "none";
+  $("pl-empty").style.display = p.items.length ? "none" : "";
+  const ul = $("pl-items");
+  ul.innerHTML = "";
+  p.items.forEach((item) => {
+    const isSong = item.kind === "song";
+    const ref = item.ref;
+    const title = ref ? (isSong ? ref.title : ref.name) : "(deleted)";
+    const sub = !ref
+      ? (isSong ? "song no longer in the library" : "show no longer in the library")
+      : (isSong ? `${ref.artist || "unknown artist"} · ${ref.duration || "?"}s` : `radio show · ${ref.segments} segments`);
+    const thumb = isSong && ref && ref.cover_url ? ref.cover_url : COVER_PLACEHOLDER;
+    const vis = p.is_owner
+      ? `<label class="item-vis" title="Visible to everyone, or just you"><input type="checkbox" data-act="vis" ${item.public ? "checked" : ""}> visible</label>`
+      : `<span class="badge ${item.public ? "public" : "private"}">${item.public ? "public" : "private"}</span>`;
+    const li = document.createElement("li");
+    li.className = "pl-item";
+    li.innerHTML = `
+      <span class="kind-chip">${isSong ? "song" : "show"}</span>
+      <img class="pl-thumb" src="${thumb}" alt="">
+      <div class="pl-info">
+        <div class="pl-title">${escapeHtml(title)}</div>
+        <div class="pl-sub">${escapeHtml(sub)}</div>
+      </div>
+      ${vis}
+      <span class="pl-btns">
+        <button class="sc-btn" data-act="play" title="Play">▶</button>
+        ${p.is_owner ? '<button class="sc-btn" data-act="rm" title="Remove from playlist">✕</button>' : ""}
+      </span>`;
+    li.querySelector('[data-act="play"]').onclick = () => playPlaylistItem(item);
+    if (p.is_owner) {
+      li.querySelector('[data-act="vis"]').onchange = async (e) => {
+        try {
+          await api(`/api/playlists/${p.id}/items/${item.uid}`, { method: "PATCH", body: { public: e.target.checked } });
+          toast(e.target.checked ? "Visible to everyone" : "Hidden — only you can see this");
+          openPlaylist(p.id);
+        } catch (err) { toast(err.message, true); }
+      };
+      li.querySelector('[data-act="rm"]').onclick = async () => {
+        try {
+          await api(`/api/playlists/${p.id}/items/${item.uid}`, { method: "DELETE" });
+          toast("Removed from playlist");
+          openPlaylist(p.id);
+        } catch (err) { toast(err.message, true); }
+      };
+    }
+    ul.appendChild(li);
+  });
+}
+
+async function playPlaylistItem(item) {
+  if (item.kind === "song") {
+    if (!item.ref || !item.ref.audio_url) { toast("Song no longer in the library", true); return; }
+    enqueue({ kind: "song", ...item.ref }, { autoplay: true });
+    return;
+  }
+  try {
+    const show = await api(`/api/shows/${item.id}`);
+    loadShowQueue(show);
+  } catch (err) { toast(err.message, true); }
+}
+
+$("pl-public").onchange = async (e) => {
+  try {
+    await api(`/api/playlists/${pl.detail.id}`, { method: "PATCH", body: { public: e.target.checked } });
+    toast(e.target.checked ? "Playlist is public — everyone can browse it" : "Playlist is now private");
+    openPlaylist(pl.detail.id);
+    refreshPlaylists();
+  } catch (err) { toast(err.message, true); }
+};
+
+$("pl-rename").onclick = async () => {
+  const name = prompt("Playlist name", pl.detail.name);
+  if (!name || !name.trim()) return;
+  try {
+    await api(`/api/playlists/${pl.detail.id}`, { method: "PATCH", body: { name: name.trim() } });
+    toast("Renamed");
+    openPlaylist(pl.detail.id);
+    refreshPlaylists();
+  } catch (err) { toast(err.message, true); }
+};
+
+$("pl-delete").onclick = async () => {
+  if (!confirm(`Delete playlist “${pl.detail.name}”?`)) return;
+  try {
+    await api(`/api/playlists/${pl.detail.id}`, { method: "DELETE" });
+    $("playlist-modal").classList.add("hidden");
+    toast("Playlist deleted");
+    refreshPlaylists();
+  } catch (err) { toast(err.message, true); }
+};
+
+$("close-playlist").onclick = () => $("playlist-modal").classList.add("hidden");
+
+/* --- add-to-playlist chooser --- */
+function openAddModal(kind, id) {
+  if (!myName()) { toast("Set a name first (My playlists card)", true); return; }
+  pl.addKind = kind;
+  pl.addId = id;
+  const list = $("add-pl-list");
+  list.innerHTML = "";
+  if (!pl.mine.length) {
+    list.innerHTML = '<p class="muted small">No playlists yet — create one below.</p>';
+  } else {
+    pl.mine.forEach((p) => {
+      const li = document.createElement("li");
+      li.className = "pl-row";
+      li.innerHTML = `
+        <span class="pl-name" style="flex:1">${escapeHtml(p.name)}</span>
+        <span class="badge ${p.public ? "public" : "private"}">${p.public ? "public" : "private"}</span>`;
+      li.onclick = () => addToPlaylist(p);
+      list.appendChild(li);
+    });
+  }
+  $("add-new-name").value = "";
+  $("add-modal").classList.remove("hidden");
+}
+
+async function addToPlaylist(p) {
+  try {
+    await api(`/api/playlists/${p.id}/items`, { method: "POST", body: { kind: pl.addKind, id: pl.addId } });
+    $("add-modal").classList.add("hidden");
+    toast(`Added to “${p.name}”`);
+    refreshPlaylists();
+  } catch (err) { toast(err.message, true); }
+}
+
+$("add-new-btn").onclick = async () => {
+  const name = $("add-new-name").value.trim();
+  if (!name) { toast("Name the new playlist", true); return; }
+  try {
+    const created = await api("/api/playlists", { method: "POST", body: { name, public: true } });
+    await api(`/api/playlists/${created.id}/items`, { method: "POST", body: { kind: pl.addKind, id: pl.addId } });
+    $("add-modal").classList.add("hidden");
+    toast(`Created “${name}” and added it`);
+    refreshPlaylists();
+  } catch (err) { toast(err.message, true); }
+};
+
+$("close-add").onclick = () => $("add-modal").classList.add("hidden");
+
 /* ------------------------------------------------------- health --------- */
 async function checkHealth() {
   try {
@@ -409,9 +681,9 @@ async function checkHealth() {
 (async function init() {
   checkHealth();
   setInterval(checkHealth, 30000);
+  renderNickname();
   try {
-    await refreshLibrary();
-    await refreshShows();
+    await Promise.all([refreshLibrary(), refreshShows(), refreshPlaylists()]);
   } catch (err) {
     toast(err.message, true);
   }
