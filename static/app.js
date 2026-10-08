@@ -748,26 +748,8 @@ $("add-new-btn").onclick = async () => {
 
 $("close-add").onclick = () => $("add-modal").classList.add("hidden");
 
-/* ------------------------------------------------------- health --------- */
-async function checkHealth() {
-  try {
-    const h = await api("/api/health");
-    const el = $("service-status");
-    el.classList.toggle("ok", h.status === "ok");
-    el.classList.toggle("degraded", h.status !== "ok");
-    const rows = Object.entries(h.services || {});
-    el.innerHTML = rows.map(([k, v]) =>
-      `<span>${k}: ${v === "ok" ? "✅" : "❌ " + v}</span>`).join("<br>");
-  } catch {
-    $("service-status").textContent = "backend unreachable";
-    $("service-status").classList.add("degraded");
-  }
-}
-
 /* ------------------------------------------------------- init ----------- */
 (async function init() {
-  checkHealth();
-  setInterval(checkHealth, 30000);
   renderNickname();
   try {
     await Promise.all([refreshLibrary(), refreshShows(), refreshPlaylists()]);
