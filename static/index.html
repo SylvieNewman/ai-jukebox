@@ -141,6 +141,16 @@
             </select>
           </div>
         </div>
+        <div class="field-row">
+          <div class="field grow">
+            <label for="dj-language">DJ language / accent</label>
+            <select id="dj-language"></select>
+          </div>
+          <div class="field grow">
+            <label for="dj-speed">DJ speech speed <span id="dj-speed-val">0.90×</span></label>
+            <input id="dj-speed" type="range" min="0.70" max="1.10" step="0.05" value="0.90">
+          </div>
+        </div>
         <p class="muted small">Uses the song settings above. Generates every song plus AI-written,
         AI-voiced segues, then starts the set automatically.</p>
         <button type="submit" class="btn secondary" id="make-show-btn">📻 Generate the whole show</button>

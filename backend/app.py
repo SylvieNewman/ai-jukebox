@@ -57,6 +57,14 @@ class ShowRequest(BaseModel):
     key_scale: str = "C major"
     cover_style: str = "vibrant album art"
     dj_vibe: str = Field("chill and smooth", description="DJ personality")
+    dj_language: str = Field(
+        "en",
+        description="DJ language/accent (Chatterbox language code, e.g. en, es, fr, de, ja, ko, zh…)",
+    )
+    dj_speed: Optional[float] = Field(
+        None, ge=0.5, le=1.5,
+        description="DJ speech speed; None = relaxed default (0.9x)",
+    )
     artist: str = ""
 
 
@@ -141,7 +149,9 @@ def api_create_show(req: ShowRequest) -> dict:
             n_tracks=req.n_tracks, genre=req.genre, mood=req.mood,
             theme=req.theme, duration=req.duration, vocals=req.vocals,
             language=req.language, bpm=req.bpm, key_scale=req.key_scale,
-            cover_style=req.cover_style, dj_vibe=req.dj_vibe, artist_hint=req.artist,
+            cover_style=req.cover_style, dj_vibe=req.dj_vibe,
+            dj_language=req.dj_language, dj_speed=req.dj_speed,
+            artist_hint=req.artist,
         )
     except services.ServiceError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc

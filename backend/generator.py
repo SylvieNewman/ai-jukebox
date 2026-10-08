@@ -174,55 +174,74 @@ _FORBIDDEN_SCRIPT_TOKENS = ("...", "placeholder", "lorem", "the previous track "
 _RETRY_NUDGE = """
 
 Your previous attempt was rejected: lines were placeholders, ellipses, or simply
-too short. Write the complete lines NOW — full sentences, at least 100 characters
-and 3-5 sentences per line, closing out the real previous song and introducing
+too short. Write the complete lines NOW — full sentences in {language_name},
+3-5 sentences per line, closing out the real previous song and introducing
 the real next song by title and artist."""
 
 
-def _valid_script(text: str) -> bool:
-    """A DJ line must be real, substantial broadcast copy — not a placeholder."""
+def _valid_script(text: str, language: str = "en") -> bool:
+    """A DJ line must be real, substantial broadcast copy — not a placeholder.
+
+    Thresholds are language-aware: CJK packs more meaning per character and
+    does not split on spaces like the Latin scripts.
+    """
     t = (text or "").strip()
-    if len(t) < 100 or len(t.split()) < 14:
+    if not t:
         return False
     low = t.lower()
-    return not any(tok in low for tok in _FORBIDDEN_SCRIPT_TOKENS)
+    if any(tok in low for tok in _FORBIDDEN_SCRIPT_TOKENS):
+        return False
+    if language in config.CJK_LANGUAGES:
+        sentence_enders = sum(1 for ch in t if ch in "。！？．.!?")
+        return len(t) >= 60 and sentence_enders >= 2
+    return len(t) >= 100 and len(t.split()) >= 14
 
 
-def _dj_scripts(songs: list[dict], dj_vibe: str) -> dict:
-    """Opener + one segue per track after the first, validated and retried so a
-    placeholder/one-word line can never reach the player (see fix/dj-transitions)."""
+def _dj_scripts(songs: list[dict], dj_vibe: str, dj_language: str = "en") -> dict:
+    """Opener + one segue per track after the first, written in the chosen
+    language, validated and retried so a placeholder/one-word line can never
+    reach the player."""
+    if dj_language not in config.DJ_LANGUAGES:
+        dj_language = "en"
+    language_name = config.DJ_LANGUAGES[dj_language]
+    min_chars = 60 if dj_language in config.CJK_LANGUAGES else 100
     n_segues = max(0, len(songs) - 1)
     playlist = "\n".join(
         f'{i + 1}. "{s["title"]}" by {s["artist"]} ({s["genre"]}, {s["mood"]}, {s["theme"]})'
         for i, s in enumerate(songs)
     )
-    base_user = prompts.SHOW_USER.format(playlist=playlist, n_segues=n_segues)
+    base_user = prompts.SHOW_USER.format(
+        playlist=playlist, n_segues=n_segues,
+        dj_language_name=language_name, min_chars=min_chars,
+    )
     nudge = ""
     last_error = "no attempt made"
 
     for attempt in range(5):
         try:
             scripts = services.extract_json(services.text_completion(
-                [{"role": "system", "content": prompts.SHOW_SYSTEM.format(dj_vibe=dj_vibe)},
+                [{"role": "system",
+                  "content": prompts.SHOW_SYSTEM.format(
+                      dj_vibe=dj_vibe, dj_language_name=language_name)},
                  {"role": "user", "content": base_user + nudge}],
                 max_tokens=2400,
                 temperature=0.85,
             ))
         except Exception as exc:  # noqa: BLE001 - unparseable output, retry
             last_error = f"attempt {attempt + 1}: {exc}"
-            nudge = _RETRY_NUDGE
+            nudge = _RETRY_NUDGE.format(language_name=language_name)
             continue
 
         opener = str(scripts.get("opener") or "").strip()
         raw_segues = scripts.get("segues")
         segues = [str(x).strip() for x in raw_segues] if isinstance(raw_segues, list) else []
         lengths = [len(x) for x in [opener, *segues[:n_segues]]]
-        if _valid_script(opener) and len(segues) >= n_segues and all(
-            _valid_script(s) for s in segues[:n_segues]
+        if _valid_script(opener, dj_language) and len(segues) >= n_segues and all(
+            _valid_script(s, dj_language) for s in segues[:n_segues]
         ):
             return {"opener": opener, "segues": segues[:n_segues]}
         last_error = f"attempt {attempt + 1}: script quality too low (chars={lengths})"
-        nudge = _RETRY_NUDGE
+        nudge = _RETRY_NUDGE.format(language_name=language_name)
 
     raise services.ServiceError(f"DJ script generation failed after 5 attempts: {last_error}")
 
@@ -239,9 +258,18 @@ def generate_show(
     key_scale: str = "C major",
     cover_style: str = "vibrant album art",
     dj_vibe: str = "chill and smooth",
+    dj_language: str = "en",
+    dj_speed: Optional[float] = None,
     artist_hint: str = "",
 ) -> dict:
-    """Build a whole radio set: songs first, then AI DJ commentary between them."""
+    """Build a whole radio set: songs first, then AI DJ commentary between them.
+
+    The DJ speaks in ``dj_language`` (a Chatterbox language code from
+    ``config.DJ_LANGUAGES``) at ``dj_speed`` (None = the config default, which
+    is a relaxed 0.9x rather than the service's rushed 1.0).
+    """
+    if dj_language not in config.DJ_LANGUAGES:
+        dj_language = "en"
     n_tracks = max(1, min(int(n_tracks), 6))
     with ThreadPoolExecutor(max_workers=min(2, n_tracks)) as pool:  # be polite to the queue
         songs = list(pool.map(
@@ -253,7 +281,7 @@ def generate_show(
             range(n_tracks),
         ))
 
-    scripts = _dj_scripts(songs, dj_vibe)
+    scripts = _dj_scripts(songs, dj_vibe, dj_language)
     opener = scripts.get("opener", "").strip()
     segues = scripts.get("segues", []) if isinstance(scripts.get("segues"), list) else []
     segues = [str(s).strip() for s in segues[: n_tracks - 1]]
@@ -266,7 +294,7 @@ def generate_show(
 
     segments: list[dict] = []
     if opener:
-        audio_bytes = services.speak(opener)
+        audio_bytes = services.speak(opener, language=dj_language, speed=dj_speed)
         fname = f"segment_0_first.mp3"
         (show_dir / fname).write_bytes(audio_bytes)
         segments.append({"kind": "dj", "label": "Opening", "script": opener,
@@ -278,7 +306,7 @@ def generate_show(
                          "lyrics": song["lyrics"]})
         if track_index < n_tracks - 1 and track_index < len(segues):
             script = segues[track_index]
-            audio_bytes = services.speak(script)
+            audio_bytes = services.speak(script, language=dj_language, speed=dj_speed)
             fname = f"segment_{track_index + 1}_{len(segments)}.mp3"
             (show_dir / fname).write_bytes(audio_bytes)
             segments.append({"kind": "dj", "label": f"Segue into track {track_index + 2}",
@@ -287,8 +315,10 @@ def generate_show(
 
     show = {
         "id": show_id,
-        "name": f"{mood.title()} {theme.title()} — {n_tracks}-track AI set",
+        "name": f"{mood.title()} {theme.title()} — {n_tracks}-track AI set"
+                + (f" · {config.DJ_LANGUAGES[dj_language]}" if dj_language != "en" else ""),
         "genre": genre, "mood": mood, "theme": theme, "dj_vibe": dj_vibe,
+        "dj_language": dj_language, "dj_speed": dj_speed,
         "segments": segments,
         "song_ids": [s["id"] for s in songs],
         "created": _now(),

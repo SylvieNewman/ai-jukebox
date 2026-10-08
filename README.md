@@ -34,9 +34,10 @@ uvicorn backend.app:app --reload
   the app writes original lyrics, composes the music, and paints the cover.
 - **Library** — every generation is stored locally (cover + audio + lyrics)
   and playable from the browser.
-- **Make a show** — choose 2–5 tracks and a DJ personality. The app generates
-  the whole set plus AI-written, AI-spoken segues, then plays it end to end:
-  opener → track → segue → track → …
+- **Make a show** — choose 2–5 tracks, a DJ personality, the DJ's language
+  (23 languages/accent options: English, Spanish, French, German, Japanese…),
+  and speech speed. The app generates the whole set plus AI-written, AI-spoken
+  segues, then plays it end to end: opener → track → segue → track → …
 
 ## API
 
