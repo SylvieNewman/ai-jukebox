@@ -12,11 +12,15 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import config, generator, services, store
+from . import config, generator, services, store, theme_pool
 
 config.validate()  # fail fast with a clear message when .env is not configured
 
 app = FastAPI(title="AI Jukebox", version="1.0.0")
+
+# Instant "random theme" rolls: a warm pool keeps fresh AI themes ready so the
+# dice button never blocks on the text model's generation time.
+THEME_POOL = theme_pool.ThemePool()
 
 
 # ------------------------------------------------------------------ models --
@@ -55,6 +59,12 @@ def api_health() -> dict:
     ok = all(v == "ok" for v in statuses.values())
     return {"status": "ok" if ok else "degraded", "services": statuses,
             "key_configured": bool(config.API_KEY)}
+
+
+@app.get("/api/themes/random")
+def api_random_theme() -> dict:
+    """Roll a fresh song theme, served instantly from the warm AI theme pool."""
+    return {"theme": THEME_POOL.next()}
 
 
 @app.post("/api/songs")
