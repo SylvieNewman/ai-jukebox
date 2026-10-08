@@ -237,22 +237,23 @@
         <label class="check" id="pl-public-wrap" title="Everyone can browse this playlist">
           <input id="pl-public" type="checkbox"> public
         </label>
+        <button type="button" class="btn-mini" id="pl-add-items" title="Add songs or shows to this playlist">＋ Add songs</button>
         <button type="button" class="sc-btn" id="pl-rename" title="Rename">✏️</button>
         <button type="button" class="sc-btn" id="pl-delete" title="Delete playlist">🗑</button>
         <button type="button" class="sc-btn" id="close-playlist" title="Close">✕</button>
       </div>
     </div>
     <ul id="pl-items" class="pl-items"></ul>
-    <p class="muted small" id="pl-empty">This playlist is empty — add songs or shows with the 📃 button.</p>
+    <p class="muted small" id="pl-empty">This playlist is empty — click “＋ Add songs” to fill it.</p>
   </div>
 </div>
 
 <!-- ============ add-to-playlist modal ============ -->
 <div id="add-modal" class="modal-overlay hidden">
   <div class="modal-box add-box">
-    <h2>Add to playlist</h2>
+    <h2 id="add-modal-title">Add to playlist</h2>
     <ul id="add-pl-list" class="playlist-list"></ul>
-    <div class="new-pl-row">
+    <div class="new-pl-row" id="add-new-row">
       <input id="add-new-name" type="text" maxlength="40" placeholder="…or a new playlist name">
       <button type="button" class="btn-mini" id="add-new-btn">Create &amp; add</button>
     </div>

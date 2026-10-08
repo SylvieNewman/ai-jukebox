@@ -519,6 +519,7 @@ function renderPlaylistModal(p) {
   $("pl-meta").textContent = `by ${p.owner} · ${p.items.length} item(s) · ${p.public ? "public" : "private"}`;
   $("pl-public").checked = p.public;
   $("pl-public-wrap").style.display = p.is_owner ? "" : "none";
+  $("pl-add-items").style.display = p.is_owner ? "" : "none";
   $("pl-rename").style.display = p.is_owner ? "" : "none";
   $("pl-delete").style.display = p.is_owner ? "" : "none";
   $("pl-empty").style.display = p.items.length ? "none" : "";
@@ -613,39 +614,123 @@ $("pl-delete").onclick = async () => {
 };
 
 $("close-playlist").onclick = () => $("playlist-modal").classList.add("hidden");
+// click the backdrop (but not the box) or press Esc to close either modal
+$("playlist-modal").addEventListener("click", (e) => {
+  if (e.target === $("playlist-modal")) $("playlist-modal").classList.add("hidden");
+});
+$("add-modal").addEventListener("click", (e) => {
+  if (e.target === $("add-modal")) closeAddModal();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    $("add-modal").classList.add("hidden");
+    $("playlist-modal").classList.add("hidden");
+  }
+});
 
-/* --- add-to-playlist chooser --- */
+function closeAddModal() {
+  $("add-modal").classList.add("hidden");
+  pl.addKind = null;
+  pl.addId = null;
+}
+
+/* --- add-to-playlist chooser / library picker --- */
+// Two modes, one modal:
+//  - from a library card:   openAddModal("song"|"show", id)  => pick a playlist
+//  - from a playlist (＋ Add songs): openAddModal(null, null) => pick library items
 function openAddModal(kind, id) {
   if (!myName()) { toast("Set a name first (My playlists card)", true); return; }
   pl.addKind = kind;
   pl.addId = id;
+  $("add-new-name").value = "";
+  $("add-modal").classList.remove("hidden");
+  if (kind) {
+    $("add-modal-title").textContent = "Add to playlist";
+    $("add-new-name").placeholder = "…or a new playlist name";
+    $("add-new-row").style.display = "";
+    renderPlaylistChooser();
+  } else {
+    $("add-modal-title").textContent = `Add songs & shows to “${pl.detail ? pl.detail.name : "…"}”`;
+    $("add-new-name").placeholder = "";
+    $("add-new-row").style.display = "none";
+    renderLibraryPicker();
+  }
+}
+
+function renderPlaylistChooser() {
   const list = $("add-pl-list");
   list.innerHTML = "";
   if (!pl.mine.length) {
     list.innerHTML = '<p class="muted small">No playlists yet — create one below.</p>';
-  } else {
-    pl.mine.forEach((p) => {
-      const li = document.createElement("li");
-      li.className = "pl-row";
-      li.innerHTML = `
-        <span class="pl-name" style="flex:1">${escapeHtml(p.name)}</span>
-        <span class="badge ${p.public ? "public" : "private"}">${p.public ? "public" : "private"}</span>`;
-      li.onclick = () => addToPlaylist(p);
-      list.appendChild(li);
-    });
+    return;
   }
-  $("add-new-name").value = "";
-  $("add-modal").classList.remove("hidden");
+  pl.mine.forEach((p) => {
+    const li = document.createElement("li");
+    li.className = "pl-row";
+    li.innerHTML = `
+      <span class="pl-name" style="flex:1">${escapeHtml(p.name)}</span>
+      <span class="badge ${p.public ? "public" : "private"}">${p.public ? "public" : "private"}</span>`;
+    li.onclick = () => addToPlaylist(p);
+    list.appendChild(li);
+  });
+}
+
+async function renderLibraryPicker() {
+  const list = $("add-pl-list");
+  list.innerHTML = '<p class="muted small">Loading…</p>';
+  let songs, shows;
+  try {
+    [songs, shows] = await Promise.all([api("/api/songs"), api("/api/shows")]);
+  } catch (err) { list.innerHTML = ""; toast(err.message, true); return; }
+  const inPlaylist = new Set((pl.detail?.items || []).map((it) => `${it.kind}:${it.id}`));
+  list.innerHTML = "";
+  const rows = [];
+  (songs.songs || []).forEach((s) => rows.push({ kind: "song", id: s.id, title: s.title, sub: s.artist, thumb: s.cover_url }));
+  (shows.shows || []).forEach((sh) => rows.push({ kind: "show", id: sh.id, title: sh.name, sub: `${(sh.segments || []).filter(x => x.kind === "song").length} tracks · show`, thumb: "" }));
+  if (!rows.length) {
+    list.innerHTML = '<p class="muted small">The library is empty — generate a song first!</p>';
+    return;
+  }
+  rows.forEach((r) => {
+    const isIn = inPlaylist.has(`${r.kind}:${r.id}`);
+    const li = document.createElement("li");
+    li.className = "pl-row";
+    li.innerHTML = `
+      <img class="pl-thumb" src="${r.thumb || COVER_PLACEHOLDER}" alt="">
+      <div class="pl-info">
+        <div class="pl-name">${escapeHtml(r.title)}</div>
+        <div class="pl-sub">${escapeHtml(r.sub)}</div>
+      </div>
+      <span class="pl-btns">
+        ${isIn ? '<span class="badge public">added</span>'
+              : `<button class="sc-btn" data-add="yes" title="Add to playlist">＋</button>`}
+      </span>`;
+    li.querySelector('[data-add="yes"]')?.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      try {
+        await api(`/api/playlists/${pl.detail.id}/items`, { method: "POST", body: { kind: r.kind, id: r.id } });
+        toast(`Added “${r.title}”`);
+        openPlaylist(pl.detail.id);   // refresh the detail view
+        renderLibraryPicker();        // keep the picker in sync
+      } catch (err) { toast(err.message, true); }
+    });
+    list.appendChild(li);
+  });
 }
 
 async function addToPlaylist(p) {
   try {
     await api(`/api/playlists/${p.id}/items`, { method: "POST", body: { kind: pl.addKind, id: pl.addId } });
-    $("add-modal").classList.add("hidden");
+    closeAddModal();
     toast(`Added to “${p.name}”`);
     refreshPlaylists();
   } catch (err) { toast(err.message, true); }
 }
+
+$("pl-add-items").onclick = () => {
+  if (!pl.detail || !pl.detail.is_owner) return;
+  openAddModal(null, null);
+};
 
 $("add-new-btn").onclick = async () => {
   const name = $("add-new-name").value.trim();
