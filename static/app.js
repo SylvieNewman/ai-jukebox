@@ -9,6 +9,15 @@ const state = {
   songs: [],
 };
 
+/* DJ languages supported by the Chatterbox endpoint (backend config). */
+const DJ_LANGUAGES = {
+  en: "English", es: "Spanish", fr: "French", de: "German", it: "Italian",
+  pt: "Portuguese", ja: "Japanese", ko: "Korean", zh: "Chinese", hi: "Hindi",
+  ar: "Arabic", ru: "Russian", nl: "Dutch", pl: "Polish", sv: "Swedish",
+  tr: "Turkish", da: "Danish", fi: "Finnish", el: "Greek", he: "Hebrew",
+  ms: "Malay", no: "Norwegian", sw: "Swahili",
+};
+
 const $ = (id) => document.getElementById(id);
 const COVER_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect fill='%23191f2e' width='200' height='200'/%3E%3C/svg%3E";
 const api = async (path, opts = {}) => {
@@ -342,6 +351,8 @@ async function generateShow() {
     ...songFormPayload(),
     n_tracks: Number($("n-tracks").value),
     dj_vibe: $("dj-vibe").value,
+    dj_language: $("dj-language").value,
+    dj_speed: Number($("dj-speed").value),
   };
   busy("Broadcasting…", true);
   try {
@@ -360,6 +371,9 @@ $("song-form").addEventListener("submit", (e) => { e.preventDefault(); generateS
 $("show-form").addEventListener("submit", (e) => { e.preventDefault(); generateShow(); });
 $("duration").addEventListener("input", () => {
   $("duration-val").textContent = fmtTime(Number($("duration").value));
+});
+$("dj-speed").addEventListener("input", () => {
+  $("dj-speed-val").textContent = Number($("dj-speed").value).toFixed(2) + "×";
 });
 
 /* ------------------------------------------------------- dice ------------ */
@@ -764,6 +778,17 @@ async function checkHealth() {
 
 /* ------------------------------------------------------- init ----------- */
 (async function init() {
+  // Populate the DJ language selector (English first, rest alphabetical).
+  const langSel = $("dj-language");
+  Object.entries(DJ_LANGUAGES)
+    .sort(([a], [b]) => (a === "en" ? -1 : b === "en" ? 1 : a.localeCompare(b)))
+    .forEach(([code, name]) => {
+      const opt = document.createElement("option");
+      opt.value = code;
+      opt.textContent = `${name} (${code})`;
+      langSel.appendChild(opt);
+    });
+
   checkHealth();
   setInterval(checkHealth, 30000);
   renderNickname();

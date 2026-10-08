@@ -49,6 +49,20 @@ PLAYLISTS_FILE = STORAGE_DIR / "playlists.json"
 REQUEST_TIMEOUT = int(os.environ.get("JUKEBOX_REQUEST_TIMEOUT", "420"))
 POLL_INTERVAL = float(os.environ.get("JUKEBOX_POLL_INTERVAL", "2.5"))
 MUSIC_POLL_TIMEOUT = int(os.environ.get("JUKEBOX_MUSIC_POLL_TIMEOUT", "360"))
+# DJ speech pacing (Chatterbox accepts 0.25-4.0; 1.0 = server default, which
+# sounds rushed, so we default to a more relaxed 0.9x).
+DJ_SPEED = float(os.environ.get("JUKEBOX_DJ_SPEED", "0.9"))
+
+# Languages supported by the Chatterbox endpoint (/info). Code -> display name.
+DJ_LANGUAGES = {
+    "en": "English", "es": "Spanish", "fr": "French", "de": "German",
+    "it": "Italian", "pt": "Portuguese", "ja": "Japanese", "ko": "Korean",
+    "zh": "Chinese", "hi": "Hindi", "ar": "Arabic", "ru": "Russian",
+    "nl": "Dutch", "pl": "Polish", "sv": "Swedish", "tr": "Turkish",
+    "da": "Danish", "fi": "Finnish", "el": "Greek", "he": "Hebrew",
+    "ms": "Malay", "no": "Norwegian", "sw": "Swahili",
+}
+CJK_LANGUAGES = frozenset({"ja", "zh", "ko"})
 
 
 def require_key() -> str:

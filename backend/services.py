@@ -277,8 +277,14 @@ def generate_music(
 # ---------------------------------------------------------------------------
 # 9008 - Chatterbox Multilingual V3  (DJ speech)
 # ---------------------------------------------------------------------------
-def speak(text: str, voice: str = "default", response_format: str = "mp3") -> bytes:
-    """Synthesize speech; returns audio bytes."""
+def speak(
+    text: str,
+    voice: str = "default",
+    response_format: str = "mp3",
+    language: str = "en",
+    speed: Optional[float] = None,
+) -> bytes:
+    """Synthesize speech in the given language at the given pace; returns bytes."""
     status, ctype, audio = _call(
         config.VOICE_URL,
         "/v1/audio/speech",
@@ -287,7 +293,8 @@ def speak(text: str, voice: str = "default", response_format: str = "mp3") -> by
             "input": text,
             "voice": voice or "default",
             "response_format": response_format,
-            "language_id": "en",
+            "language_id": language if language in config.DJ_LANGUAGES else "en",
+            "speed": float(speed) if speed is not None else config.DJ_SPEED,
         },
         raw=True,
     )
