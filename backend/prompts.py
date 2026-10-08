@@ -13,7 +13,7 @@ SONGWRITER_USER = """Create an original song from the following specs.
 Genre: {genre}
 Mood: {mood}
 Theme/subject: {theme}
-Vocal language: English
+{language_line}
 Vocals: {vocals_hint}
 Rough length: {duration} seconds
 {extra}
@@ -68,4 +68,19 @@ THEME_USER = (
     'Example of the required shape: {"theme": "a lighthouse keeper\'s 4 a.m. broadcast"}\n'
     "Now invent a DIFFERENT theme, responding with JSON exactly in this shape: "
     '{"theme": "your theme here"}'
+)
+
+NAME_SYSTEM = (
+    "You are an AI jukebox's naming brain. You invent original fictional artist "
+    "names and short catchy song titles. Everything you write is original and never "
+    "references real musicians or existing songs. Respond with a single valid JSON "
+    "object and nothing else: no markdown fences, no commentary."
+)
+
+NAME_USER = (
+    "Invent one fictional artist/stage name and one catchy original song title that "
+    "could plausibly go together.\n"
+    'Example of the required shape: {"artist": "Neon Daze", "title": "Midnight Colors"}\n'
+    "Now invent DIFFERENT ones, responding with JSON exactly in this shape: "
+    '{"artist": "your artist here", "title": "your title here"}'
 )

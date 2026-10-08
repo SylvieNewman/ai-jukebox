@@ -89,18 +89,34 @@
           </div>
         </div>
 
+        <div class="field">
+          <label for="language">Song language</label>
+          <select id="language">
+            <option>English</option><option>Spanish</option><option>French</option>
+            <option>German</option><option>Italian</option><option>Portuguese</option>
+            <option>Japanese</option><option>Korean</option><option>Chinese (Mandarin)</option>
+            <option>Russian</option>
+          </select>
+        </div>
+
         <div class="checks">
           <label class="check"><input id="vocals" type="checkbox" checked> include vocals</label>
         </div>
 
-        <div class="field-row">
-          <div class="field grow">
-            <label for="artist">Artist name (blank = AI chooses)</label>
-            <input id="artist" type="text" placeholder="e.g. Neon Daze">
+        <div class="field">
+          <div class="field-head">
+            <span class="field-head-label">Artist &amp; title</span>
+            <button type="button" id="random-names-btn" class="dice-btn" title="Roll a random artist + title">🎲 random</button>
           </div>
-          <div class="field grow">
-            <label for="title">Title (blank = AI chooses)</label>
-            <input id="title" type="text" placeholder="e.g. Midnight Colors">
+          <div class="field-row">
+            <div class="field grow">
+              <label for="artist">Artist name (blank = AI chooses)</label>
+              <input id="artist" type="text" placeholder="e.g. Neon Daze">
+            </div>
+            <div class="field grow">
+              <label for="title">Title (blank = AI chooses)</label>
+              <input id="title" type="text" placeholder="e.g. Midnight Colors">
+            </div>
           </div>
         </div>
 

@@ -50,6 +50,7 @@ function songFormPayload() {
     theme: $("theme").value.trim() || "a moment in time",
     duration: Number($("duration").value),
     vocals: $("vocals").checked,
+    language: $("language").value,
     bpm: $("bpm").value ? Number($("bpm").value) : null,
     key_scale: $("key").value,
     cover_style: $("cover-style").value,
@@ -115,7 +116,8 @@ function renderNowPlaying() {
     $("np-spinner").classList.add("hidden");
     $("np-chips").innerHTML = [
       item.genre, item.mood, item.bpm ? `${item.bpm} BPM` : "",
-      item.key, item.vocals === false ? "instrumental" : "",
+      item.key, item.language && item.language !== "English" ? item.language : "",
+      item.vocals === false ? "instrumental" : "",
     ].filter(Boolean).map((c) => `<span>${c}</span>`).join("");
     $("lyrics-text").textContent = item.lyrics || "";
   }
@@ -360,6 +362,27 @@ $("random-theme-btn").addEventListener("click", async () => {
     toast(`Rolled: “${theme}”`);
   } catch (err) {
     toast(err.message || "Couldn't roll a theme", true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+});
+
+$("random-names-btn").addEventListener("click", async () => {
+  const btn = $("random-names-btn");
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.textContent = "🎲 …";
+  try {
+    const data = await api("/api/names/random");
+    const artist = (data.artist || "").trim();
+    const title = (data.title || "").trim();
+    if (!artist || !title) throw new Error("empty names");
+    $("artist").value = artist;
+    $("title").value = title;
+    toast(`Rolled: “${title}” by ${artist}`);
+  } catch (err) {
+    toast(err.message || "Couldn't roll names", true);
   } finally {
     btn.disabled = false;
     btn.textContent = label;

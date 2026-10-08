@@ -12,15 +12,20 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import config, generator, services, store, theme_pool
+from . import config, generator, services, store, suggestion_pool
 
 config.validate()  # fail fast with a clear message when .env is not configured
 
 app = FastAPI(title="AI Jukebox", version="1.0.0")
 
-# Instant "random theme" rolls: a warm pool keeps fresh AI themes ready so the
-# dice button never blocks on the text model's generation time.
-THEME_POOL = theme_pool.ThemePool()
+# Instant "random X" rolls: warm pools keep fresh AI ideas ready so the dice
+# buttons never block on the text model's generation time.
+THEME_POOL = suggestion_pool.SuggestionPool(
+    suggestion_pool.ask_theme, suggestion_pool.THEME_FALLBACKS
+)
+NAME_POOL = suggestion_pool.SuggestionPool(
+    suggestion_pool.ask_name_pair, suggestion_pool.NAME_FALLBACKS
+)
 
 
 # ------------------------------------------------------------------ models --
@@ -30,6 +35,7 @@ class SongRequest(BaseModel):
     theme: str = Field("driving at night", description="what the song is about")
     duration: float = Field(25.0, ge=8, le=120, description="song length in seconds (8s to 2 minutes)")
     vocals: bool = True
+    language: str = Field("English", description="language for the lyrics and vocals")
     bpm: Optional[int] = Field(None, ge=60, le=200)
     key_scale: str = "C major"
     cover_style: str = "vibrant album art"
@@ -45,6 +51,7 @@ class ShowRequest(BaseModel):
     theme: str = "driving at night"
     duration: float = Field(25.0, ge=8, le=120, description="song length in seconds (8s to 2 minutes)")
     vocals: bool = True
+    language: str = "English"
     bpm: Optional[int] = None
     key_scale: str = "C major"
     cover_style: str = "vibrant album art"
@@ -67,13 +74,20 @@ def api_random_theme() -> dict:
     return {"theme": THEME_POOL.next()}
 
 
+@app.get("/api/names/random")
+def api_random_names() -> dict:
+    """Roll a fresh (artist, title) pair, served instantly from the warm pool."""
+    artist, title = NAME_POOL.next()
+    return {"artist": artist, "title": title}
+
+
 @app.post("/api/songs")
 def api_create_song(req: SongRequest) -> dict:
     try:
         return generator.generate_song(
             genre=req.genre, mood=req.mood, theme=req.theme,
-            duration=req.duration, vocals=req.vocals, bpm=req.bpm,
-            key_scale=req.key_scale, cover_style=req.cover_style,
+            duration=req.duration, vocals=req.vocals, language=req.language,
+            bpm=req.bpm, key_scale=req.key_scale, cover_style=req.cover_style,
             artist_hint=req.artist, title_hint=req.title, seed=req.seed,
         )
     except services.ServiceError as exc:
@@ -106,8 +120,8 @@ def api_create_show(req: ShowRequest) -> dict:
         return generator.generate_show(
             n_tracks=req.n_tracks, genre=req.genre, mood=req.mood,
             theme=req.theme, duration=req.duration, vocals=req.vocals,
-            bpm=req.bpm, key_scale=req.key_scale, cover_style=req.cover_style,
-            dj_vibe=req.dj_vibe, artist_hint=req.artist,
+            language=req.language, bpm=req.bpm, key_scale=req.key_scale,
+            cover_style=req.cover_style, dj_vibe=req.dj_vibe, artist_hint=req.artist,
         )
     except services.ServiceError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc

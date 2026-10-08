@@ -14,6 +14,21 @@ from typing import Any, Optional
 
 from . import config, prompts, services, store
 
+# ACE-Step vocal language codes (music service on :9007) for the languages the
+# frontend offers. Anything unknown safely falls back to English.
+VOCAL_LANGUAGE_CODES = {
+    "English": "en",
+    "Spanish": "es",
+    "French": "fr",
+    "German": "de",
+    "Italian": "it",
+    "Portuguese": "pt",
+    "Japanese": "ja",
+    "Korean": "ko",
+    "Chinese (Mandarin)": "zh",
+    "Russian": "ru",
+}
+
 
 def _now() -> str:
     return _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds")
@@ -43,6 +58,7 @@ def _lyrics_from_model(
     theme: str,
     duration: float,
     vocals: bool,
+    language: str = "English",
     artist_hint: str = "",
     title_hint: str = "",
 ) -> dict:
@@ -51,12 +67,14 @@ def _lyrics_from_model(
         extra += f"\nUse this artist name: {artist_hint}"
     if title_hint:
         extra += f"\nUse this title: {title_hint}"
+    language_line = f"Vocal language: {language}" if vocals else "Instrumental: no vocals anywhere"
     user = prompts.SONGWRITER_USER.format(
         genre=genre,
         mood=mood,
         theme=theme,
         duration=int(round(duration)),
         vocals_hint="lead vocals with lyrics" if vocals else "instrumental only, no singing",
+        language_line=language_line,
         extra=extra,
     )
     data = _json_completion(
@@ -82,6 +100,7 @@ def generate_song(
     theme: str = "driving at night",
     duration: float = 25.0,
     vocals: bool = True,
+    language: str = "English",
     bpm: Optional[int] = None,
     key_scale: str = "C major",
     cover_style: str = "vibrant album art",
@@ -91,7 +110,7 @@ def generate_song(
 ) -> dict:
     """Create one complete song (lyrics + music + cover) and store it."""
     blueprint = _lyrics_from_model(
-        genre, mood, theme, duration, vocals,
+        genre, mood, theme, duration, vocals, language=language,
         artist_hint=artist_hint, title_hint=title_hint,
     )
 
@@ -109,7 +128,7 @@ def generate_song(
             duration=duration,
             bpm=bpm,
             key_scale=key_scale,
-            vocal_language="en",
+            vocal_language=VOCAL_LANGUAGE_CODES.get(language, "en"),
             instrumental=not vocals,
             seed=seed,
         )
@@ -134,6 +153,7 @@ def generate_song(
         "key": key_scale,
         "duration": round(duration),
         "vocals": vocals,
+        "language": language,
         "lyrics": blueprint["lyrics"],
         "caption": blueprint["caption"],
         "cover_prompt": blueprint["cover_prompt"],
@@ -214,6 +234,7 @@ def generate_show(
     theme: str = "driving at night",
     duration: float = 25.0,
     vocals: bool = True,
+    language: str = "English",
     bpm: Optional[int] = None,
     key_scale: str = "C major",
     cover_style: str = "vibrant album art",
@@ -226,7 +247,7 @@ def generate_show(
         songs = list(pool.map(
             lambda i: generate_song(
                 genre=genre, mood=mood, theme=theme, duration=duration,
-                vocals=vocals, bpm=bpm, key_scale=key_scale,
+                vocals=vocals, language=language, bpm=bpm, key_scale=key_scale,
                 cover_style=cover_style, artist_hint=artist_hint,
             ),
             range(n_tracks),

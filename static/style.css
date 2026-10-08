@@ -88,6 +88,7 @@ h1 { font-size: 20px; margin: 0; letter-spacing: 4px; }
 .field.grow { flex: 1; }
 .field-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 label { font-size: 11.5px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+.field-head-label { font-size: 11.5px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
 .dice-btn {
   background: none; border: none; padding: 0; cursor: pointer;
   font-size: 11.5px; color: var(--accent-2); text-transform: none; letter-spacing: 0;
