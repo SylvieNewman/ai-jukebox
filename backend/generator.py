@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import uuid
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Optional
 
 from . import config, prompts, services, store
@@ -194,6 +194,7 @@ def _dj_scripts(songs: list[dict], dj_vibe: str) -> dict:
     n_segues = max(0, len(songs) - 1)
     playlist = "\n".join(
         f'{i + 1}. "{s["title"]}" by {s["artist"]} ({s["genre"]}, {s["mood"]}, {s["theme"]})'
+        + (f" — sounds like: {s.get('caption', '')[:160].strip()}" if s.get("caption") else "")
         for i, s in enumerate(songs)
     )
     base_user = prompts.SHOW_USER.format(playlist=playlist, n_segues=n_segues)
@@ -240,25 +241,52 @@ def generate_show(
     cover_style: str = "vibrant album art",
     dj_vibe: str = "chill and smooth",
     artist_hint: str = "",
+    voice_ref_b64: str = "",
 ) -> dict:
-    """Build a whole radio set: songs first, then AI DJ commentary between them."""
+    """Build a whole radio set: songs first, then AI DJ commentary between them.
+
+    Failure-tolerant: a track that fails to generate is skipped and reported in
+    ``show["errors"]`` instead of killing the whole set (the show is only aborted
+    when *every* track fails). ``voice_ref_b64`` is an optional base64 MP3/WAV
+    clip that customizes the DJ's voice (never stored, only forwarded to the
+    class voice service).
+    """
     n_tracks = max(1, min(int(n_tracks), 6))
+    errors: list[str] = []
+    songs: list[dict] = []
     with ThreadPoolExecutor(max_workers=min(2, n_tracks)) as pool:  # be polite to the queue
-        songs = list(pool.map(
-            lambda i: generate_song(
+        futures = {
+            pool.submit(
+                generate_song,
                 genre=genre, mood=mood, theme=theme, duration=duration,
                 vocals=vocals, language=language, bpm=bpm, key_scale=key_scale,
                 cover_style=cover_style, artist_hint=artist_hint,
-            ),
-            range(n_tracks),
-        ))
+            ): i
+            for i in range(n_tracks)
+        }
+        for future in as_completed(futures):
+            try:
+                songs.append(future.result())
+            except Exception as exc:  # noqa: BLE001 - keep the rest of the set alive
+                errors.append(f"track {futures[future] + 1}: {exc}")
+    songs.sort(key=lambda s: s["created"])  # back to playlist order
+    if not songs:
+        raise services.ServiceError(
+            f"show generation failed — all {n_tracks} tracks failed. "
+            + ("; ".join(errors))
+        )
+
+    ref_audio = voice_ref_b64.strip() or None
+    speak_kwargs: dict[str, Any] = {}
+    if ref_audio:
+        speak_kwargs["ref_audio"] = ref_audio
+    if config.DJ_SPEED != 1.0:
+        speak_kwargs["speed"] = config.DJ_SPEED
 
     scripts = _dj_scripts(songs, dj_vibe)
     opener = scripts.get("opener", "").strip()
     segues = scripts.get("segues", []) if isinstance(scripts.get("segues"), list) else []
-    segues = [str(s).strip() for s in segues[: n_tracks - 1]]
-    while len(segues) < n_tracks - 1:
-        segues.append("And now, the next track on the jukebox.")
+    segues = [str(s).strip() for s in segues[: len(songs) - 1]]
 
     show_id = uuid.uuid4().hex[:12]
     show_dir = config.STORAGE_DIR / "shows" / show_id
@@ -266,7 +294,7 @@ def generate_show(
 
     segments: list[dict] = []
     if opener:
-        audio_bytes = services.speak(opener)
+        audio_bytes = services.speak(opener, **speak_kwargs)
         fname = f"segment_0_first.mp3"
         (show_dir / fname).write_bytes(audio_bytes)
         segments.append({"kind": "dj", "label": "Opening", "script": opener,
@@ -276,9 +304,9 @@ def generate_show(
                          "title": song["title"], "artist": song["artist"],
                          "audio_url": song["audio_url"], "cover_url": song["cover_url"],
                          "lyrics": song["lyrics"]})
-        if track_index < n_tracks - 1 and track_index < len(segues):
+        if track_index < len(songs) - 1 and track_index < len(segues):
             script = segues[track_index]
-            audio_bytes = services.speak(script)
+            audio_bytes = services.speak(script, **speak_kwargs)
             fname = f"segment_{track_index + 1}_{len(segments)}.mp3"
             (show_dir / fname).write_bytes(audio_bytes)
             segments.append({"kind": "dj", "label": f"Segue into track {track_index + 2}",
@@ -287,10 +315,11 @@ def generate_show(
 
     show = {
         "id": show_id,
-        "name": f"{mood.title()} {theme.title()} — {n_tracks}-track AI set",
+        "name": f"{mood.title()} {theme.title()} — {len(songs)}-track AI set",
         "genre": genre, "mood": mood, "theme": theme, "dj_vibe": dj_vibe,
         "segments": segments,
         "song_ids": [s["id"] for s in songs],
+        "errors": errors,
         "created": _now(),
     }
     return store.save_show(show)

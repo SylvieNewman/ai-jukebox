@@ -277,18 +277,32 @@ def generate_music(
 # ---------------------------------------------------------------------------
 # 9008 - Chatterbox Multilingual V3  (DJ speech)
 # ---------------------------------------------------------------------------
-def speak(text: str, voice: str = "default", response_format: str = "mp3") -> bytes:
-    """Synthesize speech; returns audio bytes."""
+def speak(text: str, voice: str = "default", response_format: str = "mp3",
+          ref_audio: Optional[str] = None,
+          speed: Optional[float] = None) -> bytes:
+    """Synthesize speech; returns audio bytes.
+
+    ref_audio: base64-encoded reference clip (or an ``audio/*`` base64 data
+    URI) that customizes the voice — per the class voice service, use it with
+    ``voice="default"``. No URLs or file paths are accepted.
+    speed: post-generation pitch-preserving tempo multiplier (0.25-4.0;
+    1 leaves the tempo unchanged).
+    """
+    payload: dict[str, Any] = {
+        "model": config.VOICE_MODEL,
+        "input": text,
+        "voice": voice or "default",
+        "response_format": response_format,
+        "language_id": "en",
+    }
+    if ref_audio:
+        payload["ref_audio"] = ref_audio
+    if speed is not None:
+        payload["speed"] = float(speed)
     status, ctype, audio = _call(
         config.VOICE_URL,
         "/v1/audio/speech",
-        {
-            "model": config.VOICE_MODEL,
-            "input": text,
-            "voice": voice or "default",
-            "response_format": response_format,
-            "language_id": "en",
-        },
+        payload,
         raw=True,
     )
     if status != 200 or not audio:

@@ -140,8 +140,13 @@
             </select>
           </div>
         </div>
+        <div class="field">
+          <label for="voice-ref">DJ voice reference <span class="hint">(optional MP3/WAV — customizes the DJ's voice; never stored)</span></label>
+          <input id="voice-ref" type="file" accept="audio/mpeg,audio/wav,.mp3,.wav">
+        </div>
         <p class="muted small">Uses the song settings above. Generates every song plus AI-written,
-        AI-voiced segues, then starts the set automatically.</p>
+        AI-voiced segues, then starts the set automatically. If a track fails, the rest of the
+        set still plays and the failure is reported.</p>
         <button type="submit" class="btn secondary" id="make-show-btn">📻 Generate the whole show</button>
       </form>
     </div>

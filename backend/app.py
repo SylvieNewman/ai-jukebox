@@ -62,6 +62,10 @@ class ShowRequest(BaseModel):
     cover_style: str = "vibrant album art"
     dj_vibe: str = Field("chill and smooth", description="DJ personality")
     artist: str = ""
+    voice_ref_b64: str = Field(
+        "", max_length=12_000_000,
+        description=("optional base64 MP3/WAV clip that customizes the DJ's "
+                     "voice; forwarded to the class voice service and never stored"))
 
 
 class PlaylistCreate(BaseModel):
@@ -146,6 +150,7 @@ def api_create_show(req: ShowRequest) -> dict:
             theme=req.theme, duration=req.duration, vocals=req.vocals,
             language=req.language, bpm=req.bpm, key_scale=req.key_scale,
             cover_style=req.cover_style, dj_vibe=req.dj_vibe, artist_hint=req.artist,
+            voice_ref_b64=req.voice_ref_b64,
         )
     except services.ServiceError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc

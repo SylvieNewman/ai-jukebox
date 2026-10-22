@@ -36,7 +36,10 @@ uvicorn backend.app:app --reload
   and playable from the browser.
 - **Make a show** — choose 2–5 tracks and a DJ personality. The app generates
   the whole set plus AI-written, AI-spoken segues, then plays it end to end:
-  opener → track → segue → track → …
+  opener → track → segue → track → … Optionally attach an **MP3/WAV voice
+  reference** to customize the DJ's voice (forwarded to the class voice
+  service, never stored or committed). If a track fails to generate, the rest
+  of the set still plays and the failure is reported in the saved show.
 
 ### Sample songs (ready to play)
 
@@ -77,8 +80,27 @@ class-service renders.
    `query_result` → download the finished MP3.
 3. **FLUX** (9006) paints the cover from the prompt (steps 1 & 2 run in parallel).
 4. Everything is saved under `storage/` and indexed in `storage/library.json`.
-5. For a **show**, **Qwen** writes an opener + segues referencing each real
-   track, and **Chatterbox** (9008) voices them between the songs.
+5. For a **show**, **Qwen** writes an opener + segues referencing each real track
+   (including a snippet of each track's production caption, so the commentary
+   is song-specific), and **Chatterbox** (9008) voices them between the songs.
+   DJ speech tempo can be tuned with `JUKEBOX_DJ_SPEED` (0.25–4.0; below 1
+   slows the DJ down). An optional `voice_ref_b64` (base64 MP3/WAV) is
+   forwarded to the voice service as `ref_audio` for every line of a show to
+   customize the voice — it is never written to disk and never committed.
+6. **Failure tolerance:** if one track in a show fails, the set still
+   generates with the remaining tracks; `show["errors"]` lists what was
+   skipped. Only when *every* track fails does the show request fail.
+
+## Tests
+
+```bash
+pip install -r dev-requirements.txt   # pytest (dev only)
+python -m pytest tests/ -q
+```
+
+The suite runs fully offline (class services mocked): sample-song seeding +
+idempotency, the 9008 speech payload (voice reference / speed fields), and
+show-generation failure recovery.
 
 ## Safeguards (per assignment spec)
 

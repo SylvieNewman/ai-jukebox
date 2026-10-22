@@ -323,7 +323,28 @@ function loadShowQueue(show) {
 }
 
 /* ------------------------------------------------------- generation ------ */
+/* Read a picked file as a base64 string (data-URI payload part only). */
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const s = String(r.result || "");
+      resolve(s.includes(",") ? s.split(",")[1] : s);
+    };
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
+
+/* Disable both generate buttons while a generation is in flight so a double
+   click cannot start a duplicate request; re-enable on completion. */
+function setGenerating(on) {
+  $("make-song-btn").disabled = on;
+  $("make-show-btn").disabled = on;
+}
+
 async function generateSong() {
+  setGenerating(true);
   busy("Composing your song…", true);
   try {
     const song = await api("/api/songs", { method: "POST", body: songFormPayload() });
@@ -331,9 +352,10 @@ async function generateSong() {
     enqueue({ kind: "song", ...song }, { autoplay: true });
     toast(`"${song.title}" by ${song.artist} is on air!`);
   } catch (err) {
-    toast(err.message || "Song generation failed", true);
+    toast(`${err.message || "Song generation failed"} — your settings are kept; click Generate again to retry.`, true);
   } finally {
     busy("", false);
+    setGenerating(false);
   }
 }
 
@@ -343,16 +365,31 @@ async function generateShow() {
     n_tracks: Number($("n-tracks").value),
     dj_vibe: $("dj-vibe").value,
   };
+  const voiceFile = $("voice-ref").files && $("voice-ref").files[0];
+  if (voiceFile) {
+    try {
+      payload.voice_ref_b64 = await fileToBase64(voiceFile);
+    } catch (err) {
+      toast("Couldn't read the voice reference file: " + err, true);
+      return;
+    }
+  }
+  setGenerating(true);
   busy("Broadcasting…", true);
   try {
     const show = await api("/api/shows", { method: "POST", body: payload });
     await refreshLibrary();
     await refreshShows();
     loadShowQueue(show);
+    const failed = (show.errors || []).length;
+    toast(failed
+      ? `On air: ${show.name} — ${failed} track(s) failed and were skipped (see saved shows)`
+      : `On air: ${show.name}`);
   } catch (err) {
-    toast(err.message || "Show generation failed", true);
+    toast(`${err.message || "Show generation failed"} — your settings are kept; click Generate again to retry.`, true);
   } finally {
     busy("", false);
+    setGenerating(false);
   }
 }
 
