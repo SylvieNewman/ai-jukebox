@@ -41,6 +41,12 @@ uvicorn backend.app:app --reload
   service, never stored or committed). If a track fails to generate, the rest
   of the set still plays and the failure is reported in the saved show.
 
+## Screenshots
+
+![AI Jukebox — song and show generation](screenshots/app-top.png)
+
+![AI Jukebox — library of generated songs with covers, saved shows](screenshots/app-full.png)
+
 ### Sample songs (ready to play)
 
 The repo bundles **three sample songs** under `samples/` — short tracks with
@@ -59,6 +65,14 @@ so a fresh clone has three **ready-to-play** songs with titles and covers
 immediately, no generation call required to hear them. Covers are bundled at
 512×512 JPEG to keep the repo light; the MP3s themselves are the original
 class-service renders.
+
+**How they were generated:** each sample went through exactly the same class
+pipeline the app uses — **Qwen (9001)** wrote the title, artist, lyrics,
+production caption, and cover prompt from the genre/mood/theme specs;
+**ACE-Step (9007)** composed the audio (`audio_duration` 32–40s);
+**FLUX (9006)** painted the cover. Fixed seeds (6418, 2026, 42) were used for
+reproducible output; `samples/manifest.json` records each song's full lyrics,
+caption, cover prompt, seed, and music metadata.
 
 ## API
 
@@ -101,6 +115,58 @@ python -m pytest tests/ -q
 The suite runs fully offline (class services mocked): sample-song seeding +
 idempotency, the 9008 speech payload (voice reference / speed fields), and
 show-generation failure recovery.
+
+## Test results and evidence
+
+Every check below was reproduced against the live class endpoints
+(ports 9001/9006/9007/9008) or the offline test suite. "Expected" is taken
+from the assignment spec; "Actual" is what we observed.
+
+| # | Feature / check | Input | Expected | Actual | Result |
+|---|---|---|---|---|---|
+| 1 | Song generation — duration cap | `POST /api/songs`, `duration=121` | rejected (max 2 min) | HTTP 422 validation error | ✅ passed |
+| 2 | Song generation — stated maximum | `POST /api/songs`, `duration=120`, instrumental | 2:00 playable song | 200 OK, "Two Minute Rush", service-reported 120.0s audio | ✅ passed |
+| 3 | Song generation — vocal + lyrics | generate with vocals on | AI-written lyrics, sung audio | Qwen lyrics + ACE-Step vocal audio (e.g. "Neon Pulse Drive") | ✅ passed |
+| 4 | Cover art per song | generate with a cover style | new FLUX cover matching theme, shown with the track | unique cover per song, displayed in library + player | ✅ passed |
+| 5 | Sample songs ready-to-play | fresh empty storage + app start | exactly 3 samples with titles + covers | 3 seeded on startup; re-seed adds 0 (idempotent) | ✅ passed |
+| 6 | DJ show with voice reference | `POST /api/shows`, `n_tracks=1`, base64 MP3 reference | DJ opener spoken in the referenced voice | 200 in 20s, `errors: []`, opener = valid MP3 (ID3, 240 KB) | ✅ passed |
+| 7 | DJ speech speed | `JUKEBOX_DJ_SPEED=0.9` | speech tempo at 0.9× | voice service accepted `speed=0.9` on every DJ line | ✅ passed |
+| 8 | Failure case — all tracks fail | simulated service outage in show | readable error, no partial show saved | `ServiceError: all 3 tracks failed` (test suite) | ✅ passed |
+| 9 | Failure case — one of three tracks fails | 1 failing track in a show | rest of set still plays; failure reported | 2-track show generated, failure listed in `errors` | ✅ passed |
+| 10 | Offline test suite | `python -m pytest tests/ -q` | all pass, no network | 9 passed (0.43s) | ✅ passed |
+
+### Unresolved problems and unchecked claims
+
+- **Per-track progress is not streamed.** A show request is one synchronous
+  call; showing per-track progress would require a job/poll redesign. Status is
+  currently a single "Broadcasting…" state.
+- **A multi-track show with a voice reference has not been run end to end.**
+  The live voice-reference test used `n_tracks=1` (one song + opening); a 3+
+  track set with a reference clip is unchecked.
+- **DJ pacing is a judgment call.** The `JUKEBOX_DJ_SPEED` knob is verified to
+  reach the service, but no A/B listening test of a full set has been recorded.
+- **Voice-reference quality depends on the clip** (short, clean speech works
+  best); no recommendation is enforced in the UI.
+
+### Design judgment
+
+**Choice — voice references travel as base64 in the request and are never
+stored.** The class voice service requires base64 reference audio (`ref_audio`,
+"no URLs or paths"), so the browser base64-encodes the picked MP3/WAV and
+sends it inside the show request; the server forwards it verbatim on every
+speech call and discards it. This keeps user content off the server disk
+(which the assignment's safeguards require for uploads), avoids cleanup and
+multi-user isolation problems, and matches the service contract exactly.
+Evidence: check #6 above and `tests/test_speak.py`.
+
+**Limitation investigated — one-word DJ segues.** During show testing the DJ
+sometimes produced lines like "…" or a single word, which broke the radio
+format. This was investigated in `fix/dj-transitions`: the fix added
+`_valid_script` (minimum length/word counts plus a forbidden-placeholder
+list) and a retry loop that re-prompts the model with a corrective nudge, so
+a placeholder can never reach the player — the same validation/retry pattern
+now guards the whole show pipeline. Lesson: generation services need output
+*validation and retry*, not just error handling.
 
 ## Safeguards (per assignment spec)
 
