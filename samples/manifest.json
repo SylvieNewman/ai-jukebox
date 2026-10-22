@@ -1,0 +1,95 @@
+[
+  {
+    "id": "sample-neon-city-nights",
+    "title": "Neon Pulse Drive",
+    "artist": "Luna Ray",
+    "genre": "pop",
+    "mood": "upbeat",
+    "theme": "neon city nights on a summer drive",
+    "duration": 32,
+    "vocals": true,
+    "language": "English",
+    "key": "C major",
+    "bpm": null,
+    "cover_style": "synthwave neon",
+    "seed": 6418,
+    "lyrics": "[Verse 1]\nWindows down, the summer heat\nChasing lights on every street\n[Chorus]\nNeon pulse in the midnight sky\nWe\u2019re alive as we fly by\n[Verse 2]\nCity hums a electric song\nAll night long, all night long",
+    "caption": "This upbeat pop track features bright, shimmering synthesizer arpeggios layered over a punchy four-on-the-floor drum beat. The bassline is deep and groovy, driving the energy forward. Lead vocals are crisp, airy, and double-tracked for width, sitting prominently in the mix. Production emphasizes clarity and sparkle, with subtle reverb tails on the snare to create space. The arrangement builds quickly into an infectious chorus, capturing the exhilaration of a summer night drive through a glowing metropolis.",
+    "cover_prompt": "A vibrant illustration of a convertible car speeding down a wet highway at night. Reflections of pink, blue, and purple neon signs ripple across the asphalt and car body. The driver\u2019s silhouette is visible against a starry sky. The art style is modern digital painting with high contrast and saturated colors. No text or letters should appear in the image.",
+    "music_meta": {
+      "seed": "6418,3446454679",
+      "meta": {
+        "bpm": 115,
+        "duration": 32.0,
+        "genres": "N/A",
+        "keyscale": "C major",
+        "timesignature": "4",
+        "prompt": "This upbeat pop track features bright, shimmering synthesizer arpeggios layered over a punchy four-on-the-floor drum beat. The bassline is deep and groovy, driving the energy forward. Lead vocals are crisp, airy, and double-tracked for width, sitting prominently in the mix. Production emphasizes clarity and sparkle, with subtle reverb tails on the snare to create space. The arrangement builds quickly into an infectious chorus, capturing the exhilaration of a summer night drive through a glowing metropolis.",
+        "lyrics": "[Verse 1]\nWindows down, the summer heat\nChasing lights on every street\n[Chorus]\nNeon pulse in the midnight sky\nWe\u2019re alive as we fly by\n[Verse 2]\nCity hums a electric song\nAll night long, all night long"
+      }
+    },
+    "created": "2026-10-22T20:20:56+00:00"
+  },
+  {
+    "id": "sample-midnight-library-rain",
+    "title": "Midnight Rain Glass",
+    "artist": "Echo Chamber",
+    "genre": "ambient",
+    "mood": "chill",
+    "theme": "rain on the library skylight at midnight",
+    "duration": 40,
+    "vocals": false,
+    "language": "English",
+    "key": "A minor",
+    "bpm": null,
+    "cover_style": "minimalist poster",
+    "seed": 2026,
+    "lyrics": "[Intro]\n(Instrumental only - no vocals)\n\n[Verse 1]\n(Soft ambient pads swell gently, mimicking the steady rhythm of rainfall against glass surfaces in an empty space)",
+    "caption": "This track relies entirely on atmospheric sound design to evoke a serene midnight atmosphere. Deep, reverb-drenched synthesizer pads create a lush bed of sound, while subtle field recordings of rain hitting skylight glass provide organic texture. The arrangement is sparse and slow-moving, with no percussion or melody lines, focusing instead on harmonic shifts and spatial depth. The lack of vocals enhances the meditative quality, allowing the listener to immerse themselves in the quiet solitude of the library setting.",
+    "cover_prompt": "A hyper-realistic view from inside a dark, modern library looking up at a large geometric skylight. Heavy rain streaks down the glass panes, blurring the night sky outside into soft indigo and grey hues. Inside, shadows of bookshelves are barely visible in the foreground. Cool lighting, minimalist composition, high contrast between the dark interior and the wet reflective surface, photorealistic style, no text.",
+    "music_meta": {
+      "seed": "2026,1207846958",
+      "meta": {
+        "bpm": 42,
+        "duration": 40.0,
+        "genres": "N/A",
+        "keyscale": "A minor",
+        "timesignature": "4",
+        "prompt": "This track relies entirely on atmospheric sound design to evoke a serene midnight atmosphere. Deep, reverb-drenched synthesizer pads create a lush bed of sound, while subtle field recordings of rain hitting skylight glass provide organic texture. The arrangement is sparse and slow-moving, with no percussion or melody lines, focusing instead on harmonic shifts and spatial depth. The lack of vocals enhances the meditative quality, allowing the listener to immerse themselves in the quiet solitude of the library setting. (instrumental track, no vocals, no singing)",
+        "lyrics": ""
+      }
+    },
+    "created": "2026-10-22T20:21:09+00:00"
+  },
+  {
+    "id": "sample-arcade-sunset-drive",
+    "title": "Neon Last Ride",
+    "artist": "Synthwave Echoes",
+    "genre": "electronic",
+    "mood": "nostalgic",
+    "theme": "one last arcade sunset drive",
+    "duration": 35,
+    "vocals": true,
+    "language": "English",
+    "key": "E minor",
+    "bpm": null,
+    "cover_style": "vintage film poster",
+    "seed": 42,
+    "lyrics": "[Verse 1]\nCoins spent, screens fade out\nRust on the glass, no doubt\n[Chorus]\nOne last drive into the red\nWhere the memories stay ahead\n[Outro]\nFading fast, gone too soon\nUnderneath the pixel moon",
+    "caption": "This track features a nostalgic electronic soundscape with warm analog synthesizers and a steady four-on-the-floor beat. The arrangement builds gently from sparse arpeggios to a lush chorus, creating an emotional energy curve that peaks briefly before fading out. Lead vocals are processed with subtle reverb to enhance the dreamy, retro atmosphere, while crisp digital percussion keeps the rhythm tight and modern.",
+    "cover_prompt": "A wide-angle shot of a vintage convertible driving away on a desert highway at sunset. The sky is a gradient of deep purples and oranges. Neon signs from a distant arcade reflect on the car's chrome bumper. The art style is semi-realistic digital painting with soft lighting and a nostalgic, hazy filter. No text or letters present in the scene.",
+    "music_meta": {
+      "seed": "42,180620116",
+      "meta": {
+        "bpm": 125,
+        "duration": 35.0,
+        "genres": "N/A",
+        "keyscale": "E minor",
+        "timesignature": "4",
+        "prompt": "This track features a nostalgic electronic soundscape with warm analog synthesizers and a steady four-on-the-floor beat. The arrangement builds gently from sparse arpeggios to a lush chorus, creating an emotional energy curve that peaks briefly before fading out. Lead vocals are processed with subtle reverb to enhance the dreamy, retro atmosphere, while crisp digital percussion keeps the rhythm tight and modern.",
+        "lyrics": "[Verse 1]\nCoins spent, screens fade out\nRust on the glass, no doubt\n[Chorus]\nOne last drive into the red\nWhere the memories stay ahead\n[Outro]\nFading fast, gone too soon\nUnderneath the pixel moon"
+      }
+    },
+    "created": "2026-10-22T20:21:21+00:00"
+  }
+]

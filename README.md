@@ -38,6 +38,25 @@ uvicorn backend.app:app --reload
   the whole set plus AI-written, AI-spoken segues, then plays it end to end:
   opener → track → segue → track → …
 
+### Sample songs (ready to play)
+
+The repo bundles **three sample songs** under `samples/` — short tracks with
+covers, generated in advance using the class endpoints (Qwen 9001 lyrics,
+FLUX 9006 covers, ACE-Step 9007 music):
+
+| Song | Artist | Style | Length |
+|---|---|---|---|
+| Neon Pulse Drive | Luna Ray | pop · upbeat | 0:32 |
+| Midnight Rain Glass | Echo Chamber | ambient · chill | 0:40 |
+| Neon Last Ride | Synthwave Echoes | electronic · nostalgic | 0:35 |
+
+On first startup the app copies them into your library automatically
+(`backend/samples.py`, idempotent — already-present sample ids are skipped),
+so a fresh clone has three **ready-to-play** songs with titles and covers
+immediately, no generation call required to hear them. Covers are bundled at
+512×512 JPEG to keep the repo light; the MP3s themselves are the original
+class-service renders.
+
 ## API
 
 | Method | Path | Description |

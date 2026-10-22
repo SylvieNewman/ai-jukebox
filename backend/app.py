@@ -13,11 +13,15 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import config, generator, services, store, suggestion_pool
+from . import config, generator, samples, services, store, suggestion_pool
 
 config.validate()  # fail fast with a clear message when .env is not configured
 
 app = FastAPI(title="AI Jukebox", version="1.0.0")
+
+# Seed the library with the three bundled sample songs (idempotent: skips any
+# sample id already present, so re-seeding never duplicates).
+samples.seed_samples()
 
 # Instant "random X" rolls: warm pools keep fresh AI ideas ready so the dice
 # buttons never block on the text model's generation time.
