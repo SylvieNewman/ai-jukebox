@@ -50,6 +50,11 @@ REQUEST_TIMEOUT = int(os.environ.get("JUKEBOX_REQUEST_TIMEOUT", "420"))
 POLL_INTERVAL = float(os.environ.get("JUKEBOX_POLL_INTERVAL", "2.5"))
 MUSIC_POLL_TIMEOUT = int(os.environ.get("JUKEBOX_MUSIC_POLL_TIMEOUT", "360"))
 
+# --- DJ voice ----------------------------------------------------------------
+# Post-generation tempo multiplier for DJ speech (0.25-4.0; 1 = unchanged).
+# Values below 1 slow the DJ down — the class voice service supports it.
+DJ_SPEED = float(os.environ.get("JUKEBOX_DJ_SPEED", "1.0"))
+
 
 def require_key() -> str:
     """Fail fast with a clear message if no API key is configured."""
